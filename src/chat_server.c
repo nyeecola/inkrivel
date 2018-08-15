@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#define SERVER_PORT 7555
+#define SERVER_PORT 17555
 
 int main(int argc, char **argv) {
 

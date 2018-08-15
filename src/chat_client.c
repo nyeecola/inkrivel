@@ -8,7 +8,7 @@
 #include <pthread.h>
 
 #define SERVER_ADDRESS "127.0.0.1"
-#define SERVER_PORT 7555
+#define SERVER_PORT 17555
 
 void *listen_server(void *arg) {
     for (;;) {
@@ -45,12 +45,14 @@ int main(int argc, char **argv) {
 
     // server address struct initialization
     struct sockaddr_in server_address = {0};
+    memcpy(&server_address.sin_addr.s_addr, server->h_addr, server->h_length);
     server_address.sin_family = AF_INET;
     server_address.sin_port = htons(SERVER_PORT);
 
     // connect to server
     int err = connect(socket_fd, (struct sockaddr *) &server_address, sizeof(server_address)) < 0;
     if (err) {
+        fprintf(stderr, "%d %d\n", err, errno);
         fprintf(stderr, "ERROR: %s\n", strerror(errno));
         return -1;
     }
