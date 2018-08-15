@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
 
     // server address struct initialization
     struct sockaddr_in server_address = {0};
-    memcpy(&server_address.sin_addr.s_addr, server->h_addr, server->h_length);
+    memcpy(&server_address.sin_addr.s_addr, server->h_addr_list[0], server->h_length);
     server_address.sin_family = AF_INET;
     server_address.sin_port = htons(SERVER_PORT);
 
