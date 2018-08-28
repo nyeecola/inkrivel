@@ -23,7 +23,8 @@ DEPS = $(OBJECTS:.o=.d)
 
 # flags #
 COMPILE_FLAGS = -std=c++11 -Wall -Wextra -g
-INCLUDES = -I include/ -I /usr/local/include -lGL -lSDL2_image -lSDL2
+INCLUDES = -I include/ -I /usr/local/include
+LDFLAGS =  -lSDL2 -lSDL2_image -lGL
 # Space-separated pkg-config libraries used by this project
 LIBS =
 
@@ -59,7 +60,7 @@ all: $(BIN_PATH)/$(BIN_NAME)
 # Creation of the executable
 $(BIN_PATH)/$(BIN_NAME): $(OBJECTS)
 	@echo "Linking: $@"
-	$(CXX) $(OBJECTS) -o $@
+	$(CXX) $(OBJECTS) -o $@ $(LDFLAGS)
 
 # Add dependency files, if they exist
 -include $(DEPS)
@@ -69,4 +70,4 @@ $(BIN_PATH)/$(BIN_NAME): $(OBJECTS)
 # dependency files to provide header dependencies
 $(BUILD_PATH)/%.o: $(SRC_PATH)/%.$(SRC_EXT)
 	@echo "Compiling: $< -> $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -MP -MMD -c $< -o $@ -Isrc/
+	$(CXX) $(CXXFLAGS) -MP -MMD -c $< -o $@ -Isrc/ $(INCLUDES)
