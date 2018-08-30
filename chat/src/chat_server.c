@@ -2,12 +2,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <fcntl.h>
 #include <unistd.h>
 
 #define SERVER_PORT 17555
+#define MAX_PENDING_CONNECTIONS 5
 
 int main(int argc, char **argv) {
 
@@ -31,7 +33,9 @@ int main(int argc, char **argv) {
     }
 
     // start listening
-    listen(socket_fd, 5);
+    if (listen(socket_fd, MAX_PENDING_CONNECTIONS)) {
+        fprintf(stderr, "ERROR: Could not start listening.\n");
+    }
     fprintf(stdout, "Listening...\n");
     
     // TODO: stop using this, figure out a better way or use linked lists instead
@@ -94,6 +98,7 @@ int main(int argc, char **argv) {
             // ... and send it to other users
             for (int j = 0; j <= last_socket_fd_id; j++) {
                 if (j == i) continue; // don't send to the user who sent it to us
+                if (sockets[j] == -1) continue; // TODO: stop doing this
 
                 sprintf(send_buffer, "User %d: %s\n", sockets[j], buffer);
                 n = write(sockets[j], send_buffer, 400);
