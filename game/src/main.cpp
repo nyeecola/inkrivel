@@ -124,9 +124,26 @@ typedef struct {
 } Vertex;
 
 typedef struct {
+    float x;
+    float y;
+    float z;
+} Normal;
+
+typedef struct {
+    float x;
+    float y;
+} Texture;
+
+typedef struct {
     int a;
     int b;
     int c;
+    int na;
+    int nb;
+    int nc;
+    int ta;
+    int tb;
+    int tc;
 } Face;
 
 typedef struct {
@@ -134,22 +151,74 @@ typedef struct {
     int num_vertices;
     Face *faces;
     int num_faces;
+    Normal *normals;
+    int num_normals;
+    Texture *textures;
+    int num_textures;
+    GLuint texture_id;
 } Model;
 
-Model load_wavefront_model(char *filename) {
+typedef enum {
+    VERTEX_ONLY,
+    VERTEX_NORMAL,
+    VERTEX_TEXTURE,
+    ALL
+} FaceType;
+
+Model load_wavefront_model(char *obj_filename, char *texture_filename, FaceType face_type) {
+    SDL_Surface *sur = IMG_Load(texture_filename);
+
     Model model = {0};
+
     model.vertices = (Vertex *) malloc(10000 * sizeof(Vertex));
     model.faces = (Face *) malloc(10000 * sizeof(Face));
-    FILE *f = fopen(filename, "r");
+    model.normals = (Normal *) malloc(10000 * sizeof(Normal));
+    model.textures = (Texture *) malloc(10000 * sizeof(Texture));
+
+    glGenTextures(1, &model.texture_id);
+    glBindTexture(GL_TEXTURE_2D, model.texture_id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, 4, 1024, 1024, 0, GL_RGBA, GL_UNSIGNED_BYTE, sur->pixels);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    FILE *f = fopen(obj_filename, "r");
     char type[40] = {0};
     while ((fscanf(f, " %s", type)) != EOF) {
         if (!strcmp(type, "v")) {
             Vertex v = {0};
+
             fscanf(f, " %f %f %f", &v.x, &v.y, &v.z);
-            model.vertices[model.num_vertices++] = v;
+            model.vertices[++model.num_vertices] = v;
+        } else if (!strcmp(type, "vn")) {
+            Normal n = {0};
+
+            fscanf(f, " %f %f %f", &n.x, &n.y, &n.z);
+            model.normals[++model.num_normals] = n;
+        } else if (!strcmp(type, "vt")) {
+            Texture t = {0};
+
+            fscanf(f, " %f %f", &t.x, &t.y);
+            //t.x = 1 - t.x;
+            t.y = 1 - t.y;
+            model.textures[++model.num_textures] = t;
         } else if (!strcmp(type, "f")) {
             Face face = {0};
-            fscanf(f, " %d %d %d", &face.a, &face.b, &face.c);
+
+            if (face_type == VERTEX_ONLY) {
+                fscanf(f, " %d %d %d", &face.a, &face.b, &face.c);
+            } else if (face_type == VERTEX_NORMAL) {
+                //int aux;
+                //fscanf(f, " %d//%d %d//%d %d//%d", &face.a, &aux, &face.b, &aux, &face.c, &aux);
+                fscanf(f, " %d//%d %d//%d %d//%d", &face.a, &face.na, &face.b, &face.nb, &face.c, &face.nc);
+            } else if (face_type == VERTEX_TEXTURE) {
+                // TODO
+            } else if (face_type == ALL) {
+                fscanf(f, " %d/%d/%d %d/%d/%d %d/%d/%d", &face.a, &face.ta, &face.na, &face.b, &face.tb, &face.nb, &face.c, &face.tc, &face.nc);
+            } else {
+                assert(false);
+            }
+
             model.faces[model.num_faces++] = face;
         }
     }
@@ -157,30 +226,59 @@ Model load_wavefront_model(char *filename) {
 }
 
 void draw_model(Model model) {
-    srand(37);
+    glBindTexture(GL_TEXTURE_2D, model.texture_id);
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
     for (int i = 0; i < model.num_faces; i++) {
         Face f = model.faces[i];
         glBegin(GL_TRIANGLES);
-        //float r = (rand() % 1000) / 1000.0;
-        float g = (rand() % 1000) / 1000.0;
-        //float b = (rand() % 1000) / 1000.0;
-        glColor3f(0.3, min(0.45 + g, 1), 0.3);
+        if (model.num_normals) {
+            glNormal3f(model.normals[f.na].x,
+                       model.normals[f.na].y,
+                       model.normals[f.na].z);
+        }
+        if (model.num_textures) {
+            glTexCoord2f(model.textures[f.ta].x,
+                         model.textures[f.ta].y);
+        }
         glVertex3f(model.vertices[f.a].x,
                    model.vertices[f.a].y,
                    model.vertices[f.a].z);
+        if (model.num_normals) {
+            glNormal3f(model.normals[f.nb].x,
+                       model.normals[f.nb].y,
+                       model.normals[f.nb].z);
+        }
+        if (model.num_textures) {
+            glTexCoord2f(model.textures[f.tb].x,
+                         model.textures[f.tb].y);
+        }
         glVertex3f(model.vertices[f.b].x,
                    model.vertices[f.b].y,
                    model.vertices[f.b].z);
+        if (model.num_normals) {
+            glNormal3f(model.normals[f.nc].x,
+                       model.normals[f.nc].y,
+                       model.normals[f.nc].z);
+        }
+        if (model.num_textures) {
+            glTexCoord2f(model.textures[f.tc].x,
+                         model.textures[f.tc].y);
+        }
         glVertex3f(model.vertices[f.c].x,
                    model.vertices[f.c].y,
                    model.vertices[f.c].z);
         glEnd();
     }
+
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+#if 0
 char *load_img(char *filename) {
     
 }
+#endif
 
 int main() {
     SDL_Window *window = getWindow();
@@ -188,25 +286,16 @@ int main() {
 
     SDL_GLContext context = SDL_GL_CreateContext(window);
 
-    // DEBUG
-    Model model = load_wavefront_model("assets/model.obj");
-    printf("%d %d\n", model.num_faces, model.num_vertices);
-
-    // DEBUG
-    SDL_Surface *wood_surface = IMG_Load("assets/wood.png");
-    printf("%d %d %d\n", wood_surface->w, wood_surface->h, wood_surface->pitch);
-    unsigned int *pixels = (unsigned int *) wood_surface->pixels;
-    printf("%x %u %u %u %u\n", pixels[0], pixels[0] & 0xff000000, pixels[0] & 0x00ff0000, pixels[0] & 0x0000ff00, pixels[0] & 0x000000ff);
+    // load slime model and texture
+    Model slime = load_wavefront_model("assets/slime.obj", "assets/slime.png", ALL);
 
     glEnable(GL_TEXTURE_2D);
-    GLuint texture_id;
-    glGenTextures(1, &texture_id);
 
+    glShadeModel(GL_SMOOTH);
     glEnable(GL_DEPTH_TEST);
-    glDisable(GL_CULL_FACE);
+    glEnable(GL_LIGHTING);
+    //glDisable(GL_CULL_FACE);
 
-    float rotx = 0;
-    float roty = 0;
     float tranx = 0;
     float trany = 0;
     const Uint8 *kbState = SDL_GetKeyboardState(NULL);
@@ -243,33 +332,39 @@ int main() {
         glLoadIdentity();
         glTranslatef(0, 0, -10);
 
-        glBindTexture(GL_TEXTURE_2D, texture_id);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_FILTER, GL_LINEAR);
-        //glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND/GL_REPLACE/GL_MODULATE);
-        glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-        glTexImage2D(GL_TEXTURE_2D, 0, 4, 512, 512, 0, GL_RGBA, GL_UNSIGNED_BYTE, wood_surface->pixels);
+        // draw light
+        {
+            glEnable(GL_LIGHT0);
+            GLfloat light_position[] = { 100, 100, 150, 1 };
+            GLfloat ambient[] = { 0.5, 0.5, 0.5, 1 };
+            GLfloat diffuse_specular[] = { 0.7, 0.7, 0.7, 1 };
+            glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+            glLightfv(GL_LIGHT0, GL_AMBIENT, ambient);
+            glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse_specular);
+            glLightfv(GL_LIGHT0, GL_SPECULAR, diffuse_specular);
 
-        glPushMatrix();
-        glRotatef(rotx, 1, 0, 0);
-        glRotatef(roty, 0, 1, 0);
-        drawCube();
-        glPopMatrix();
+            // default is (1, 0, 0)
+            glLighti(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 3.5);
+            //glLighti(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1);
+            //glLighti(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 1);
+        }
 
-        glPushMatrix();
-        glTranslatef(tranx, trany, -10);
-        drawCube();
-        glPopMatrix();
-        
-        glPushMatrix();
-        glTranslatef(-tranx, -trany, -10);
-        glRotatef(90, 1, 0, 0);
-        glScalef(0.5, 0.5, 0.5);
-        draw_model(model);
-        glPopMatrix();
-
-        rotx += 1;
-        roty += 0.9;
+        // draw slime
+        { 
+            GLfloat mat_ambient[] = { 0.8, 0.8, 0.8, 1.0 };
+            GLfloat mat_diffuse[] = { 0.8, 0.8, 0.8, 1.0 };
+            GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
+            GLfloat mat_shininess[] = { 1.0 };
+            glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, mat_ambient);
+            glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_diffuse);
+            glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
+            glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
+            glPushMatrix();
+            glTranslatef(tranx, trany, 4);
+            glScalef(0.5, 0.5, 0.5);
+            draw_model(slime);
+            glPopMatrix();
+        }
 
         SDL_GL_SwapWindow(window);
     }
