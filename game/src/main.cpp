@@ -47,76 +47,6 @@ void makeFrustum (double fovY, double aspectRatio, double front, double back) {
     glFrustum(-width, width, -height, height, front, back);
 }
 
-void drawCube() {
-    glColor3f(1, 1, 1);
-
-    glBegin(GL_POLYGON);
-    glTexCoord2f(0, 0);
-    glVertex3f(0, 0, 0);
-    glTexCoord2f(0, 1);
-    glVertex3f(0, 1, 0);
-    glTexCoord2f(1, 1);
-    glVertex3f(1, 1, 0);
-    glTexCoord2f(1, 0);
-    glVertex3f(1, 0, 0);
-    glEnd();
-
-    glBegin(GL_POLYGON);
-    glTexCoord2f(0, 0);
-    glVertex3f(0, 0, 1);
-    glTexCoord2f(0, 1);
-    glVertex3f(0, 1, 1);
-    glTexCoord2f(1, 1);
-    glVertex3f(1, 1, 1);
-    glTexCoord2f(1, 0);
-    glVertex3f(1, 0, 1);
-    glEnd();
-
-    glBegin(GL_POLYGON);
-    glTexCoord2f(0, 0);
-    glVertex3f(0, 0, 0);
-    glTexCoord2f(0, 1);
-    glVertex3f(0, 0, 1);
-    glTexCoord2f(1, 1);
-    glVertex3f(0, 1, 1);
-    glTexCoord2f(1, 0);
-    glVertex3f(0, 1, 0);
-    glEnd();
-
-    glBegin(GL_POLYGON);
-    glTexCoord2f(0, 0);
-    glVertex3f(1, 0, 0);
-    glTexCoord2f(0, 1);
-    glVertex3f(1, 0, 1);
-    glTexCoord2f(1, 1);
-    glVertex3f(1, 1, 1);
-    glTexCoord2f(1, 0);
-    glVertex3f(1, 1, 0);
-    glEnd();
-
-    glBegin(GL_POLYGON);
-    glTexCoord2f(0, 0);
-    glVertex3f(0, 1, 0);
-    glTexCoord2f(0, 1);
-    glVertex3f(0, 1, 1);
-    glTexCoord2f(1, 1);
-    glVertex3f(1, 1, 1);
-    glTexCoord2f(1, 0);
-    glVertex3f(1, 1, 0);
-    glEnd();
-
-    glBegin(GL_POLYGON);
-    glTexCoord2f(0, 0);
-    glVertex3f(0, 0, 0);
-    glTexCoord2f(0, 1);
-    glVertex3f(0, 0, 1);
-    glTexCoord2f(1, 1);
-    glVertex3f(1, 0, 1);
-    glTexCoord2f(1, 0);
-    glVertex3f(1, 0, 0);
-    glEnd();
-}
-
 typedef struct {
     float x;
     float y;
@@ -199,7 +129,6 @@ Model load_wavefront_model(char *obj_filename, char *texture_filename, FaceType 
             Texture t = {0};
 
             fscanf(f, " %f %f", &t.x, &t.y);
-            //t.x = 1 - t.x;
             t.y = 1 - t.y;
             model.textures[++model.num_textures] = t;
         } else if (!strcmp(type, "f")) {
@@ -208,8 +137,6 @@ Model load_wavefront_model(char *obj_filename, char *texture_filename, FaceType 
             if (face_type == VERTEX_ONLY) {
                 fscanf(f, " %d %d %d", &face.a, &face.b, &face.c);
             } else if (face_type == VERTEX_NORMAL) {
-                //int aux;
-                //fscanf(f, " %d//%d %d//%d %d//%d", &face.a, &aux, &face.b, &aux, &face.c, &aux);
                 fscanf(f, " %d//%d %d//%d %d//%d", &face.a, &face.na, &face.b, &face.nb, &face.c, &face.nc);
             } else if (face_type == VERTEX_TEXTURE) {
                 // TODO
@@ -274,27 +201,20 @@ void draw_model(Model model) {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-#if 0
-char *load_img(char *filename) {
-    
-}
-#endif
-
 int main() {
     SDL_Window *window = getWindow();
     assert(window);
 
     SDL_GLContext context = SDL_GL_CreateContext(window);
 
-    // load slime model and texture
-    Model slime = load_wavefront_model("assets/slime.obj", "assets/slime.png", ALL);
-
     glEnable(GL_TEXTURE_2D);
-
-    glShadeModel(GL_SMOOTH);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_LIGHTING);
     //glDisable(GL_CULL_FACE);
+    glShadeModel(GL_SMOOTH);
+
+    // load slime model
+    Model slime = load_wavefront_model("assets/slime.obj", "assets/slime.png", ALL);
 
     float tranx = 0;
     float trany = 0;
