@@ -10,8 +10,7 @@ using namespace std;
 class Character {
 public:
     Character(string name, Weapon weapon);
-    string getName();
-private:
+    
     string name;
     Weapon weapon;
     Position position;
