@@ -96,8 +96,6 @@ typedef enum {
 } FaceType;
 
 Model load_wavefront_model(char *obj_filename, char *texture_filename, FaceType face_type) {
-    SDL_Surface *sur = IMG_Load(texture_filename);
-
     Model model = {0};
 
     model.vertices = (Vertex *) malloc(10000 * sizeof(Vertex));
@@ -105,12 +103,16 @@ Model load_wavefront_model(char *obj_filename, char *texture_filename, FaceType 
     model.normals = (Normal *) malloc(10000 * sizeof(Normal));
     model.textures = (Texture *) malloc(10000 * sizeof(Texture));
 
-    glGenTextures(1, &model.texture_id);
-    glBindTexture(GL_TEXTURE_2D, model.texture_id);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, 4, 1024, 1024, 0, GL_RGBA, GL_UNSIGNED_BYTE, sur->pixels);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    if (face_type == ALL || face_type == VERTEX_TEXTURE) {
+        // TODO: do we need to free this?
+        SDL_Surface *sur = IMG_Load(texture_filename);
+        glGenTextures(1, &model.texture_id);
+        glBindTexture(GL_TEXTURE_2D, model.texture_id);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexImage2D(GL_TEXTURE_2D, 0, 4, 1024, 1024, 0, GL_RGBA, GL_UNSIGNED_BYTE, sur->pixels);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
 
     FILE *f = fopen(obj_filename, "r");
     char type[40] = {0};
@@ -215,6 +217,8 @@ int main() {
 
     // load slime model
     Model slime = load_wavefront_model("assets/slime.obj", "assets/slime.png", ALL);
+    //Model slime = load_wavefront_model("assets/rolo.obj", "assets/slime.png", VERTEX_NORMAL);
+    Model map = load_wavefront_model("assets/map.obj", "assets/slime.png", VERTEX_NORMAL);
 
     float tranx = 0;
     float trany = 0;
@@ -228,20 +232,44 @@ int main() {
             }
         }
 
+        int mouseX_int, mouseY_int;
+        SDL_GetMouseState(&mouseX_int, &mouseY_int);
+        // TODO: fix this
+        float mouseX = mouseX_int;
+        float mouseY = mouseY_int;
+        mouseX -= 400;
+        mouseY -= 300;
+        float norm = sqrt(mouseX * mouseX + mouseY * mouseY);
+        mouseX /= norm;
+        mouseY /= norm;
+        float mouseAngle = atan2(mouseY, mouseX) * 180 / M_PI;
+        mouseAngle += 90;
+        mouseAngle *= -1;
+        //printf("Mouse %d %d\n", mouseX, mouseY);
+        //printf("Mouse angle %f\n", mouseAngle);
+
+#if 0
         if (kbState[SDL_SCANCODE_W]) {
-            trany += 0.1;
+            trany += 0.02;
         }
         if (kbState[SDL_SCANCODE_A]) {
-            tranx -= 0.1;
+            tranx -= 0.02;
         }
         if (kbState[SDL_SCANCODE_S]) {
-            trany -= 0.1;
+            trany -= 0.02;
         }
         if (kbState[SDL_SCANCODE_D]) {
-            tranx += 0.1;
+            tranx += 0.02;
         }
+#else
+        if (kbState[SDL_SCANCODE_W]) {
+            // set trany/tranx based on direction from mouse
+            tranx += mouseX * 0.02;
+            trany -= mouseY * 0.02;
+        }
+#endif
 
-        glClearColor(1, 0, 0, 1);
+        glClearColor(0.4, 0.6, 1, 1);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glMatrixMode(GL_PROJECTION);
@@ -250,7 +278,8 @@ int main() {
 
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
-        glTranslatef(0, 0, -10);
+        glTranslatef(0, 0, -8);
+        glTranslatef(-tranx, -trany, 0);
 
         // draw light
         {
@@ -264,7 +293,7 @@ int main() {
             glLightfv(GL_LIGHT0, GL_SPECULAR, diffuse_specular);
 
             // default is (1, 0, 0)
-            glLighti(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 3.5);
+            glLighti(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 4.0);
             //glLighti(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1);
             //glLighti(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 1);
         }
@@ -281,8 +310,27 @@ int main() {
             glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
             glPushMatrix();
             glTranslatef(tranx, trany, 4);
-            glScalef(0.5, 0.5, 0.5);
+            glRotatef(mouseAngle, 0, 0, 1);
+            glScalef(0.2, 0.2, 0.2);
             draw_model(slime);
+            glPopMatrix();
+        }
+
+        // draw map
+        { 
+            GLfloat mat_ambient[] = { 0.8, 0.8, 0.8, 1.0 };
+            GLfloat mat_diffuse[] = { 0.8, 0.8, 0.8, 1.0 };
+            GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
+            GLfloat mat_shininess[] = { 1.0 };
+            glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, mat_ambient);
+            glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_diffuse);
+            glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
+            glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
+            glPushMatrix();
+            //glLoadIdentity();
+            glTranslatef(0, 0, 3);
+            glScalef(1.0, 1.0, 1.0);
+            draw_model(map);
             glPopMatrix();
         }
 
