@@ -5,105 +5,52 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define SCREEN_WIDTH 800
-#define SCREEN_HEIGHT 600
+#include "render-types.hpp"
+
+#define SCREEN_WIDTH 1366
+#define SCREEN_HEIGHT 768
 
 #define max(a, b) ((a) > (b) ? a : b)
 #define min(a, b) ((a) < (b) ? a : b)
 
-SDL_Window *getWindow(){
-    SDL_Window *window = NULL;
-
+void loadLibraries() {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
-        return NULL;
-    }
-    window = SDL_CreateWindow("InkRivel", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
-
-    if (window == NULL) {
-        printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
-        return NULL;
+        exit(1);
     }
 
     if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
         printf("SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError());
-        return NULL;
+        exit(1);
     }
-
-    return window;
 }
 
+
+// TODO: dar créditos a quem fez isso pela primeira vez
 // This creates a symmetric frustum.
 // It converts to 6 params (l, r, b, t, n, f) for glFrustum()
 // from given 4 params (fovy, aspect, near, far)
-void makeFrustum (double fovY, double aspectRatio, double front, double back) {
-    const double DEG2RAD = 3.14159265 / 180;
+void makeFrustum (double fov_y, double aspect_ratio, double front, double back) {
+    const double DEG2RAD = M_PI / 180;
 
-    double tangent = tan(fovY/2 * DEG2RAD);   // tangent of half fovY
+    double tangent = tan(fov_y/2 * DEG2RAD);   // tangent of half fovY
     double height = front * tangent;          // half height of near plane
-    double width = height * aspectRatio;      // half width of near plane
+    double width = height * aspect_ratio;     // half width of near plane
 
     // params: left, right, bottom, top, near, far
     glFrustum(-width, width, -height, height, front, back);
 }
 
-typedef struct {
-    float x;
-    float y;
-    float z;
-} Vertex;
 
-typedef struct {
-    float x;
-    float y;
-    float z;
-} Normal;
-
-typedef struct {
-    float x;
-    float y;
-} Texture;
-
-typedef struct {
-    int a;
-    int b;
-    int c;
-    int na;
-    int nb;
-    int nc;
-    int ta;
-    int tb;
-    int tc;
-} Face;
-
-typedef struct {
-    Vertex *vertices;
-    int num_vertices;
-    Face *faces;
-    int num_faces;
-    Normal *normals;
-    int num_normals;
-    Texture *textures;
-    int num_textures;
-    GLuint texture_id;
-} Model;
-
-typedef enum {
-    VERTEX_ONLY,
-    VERTEX_NORMAL,
-    VERTEX_TEXTURE,
-    ALL
-} FaceType;
-
-Model load_wavefront_model(char *obj_filename, char *texture_filename, FaceType face_type) {
+Model loadWavefrontModel(char *obj_filename, char *texture_filename, FaceType face_type) {
     Model model = {0};
 
     model.vertices = (Vertex *) malloc(10000 * sizeof(Vertex));
     model.faces = (Face *) malloc(10000 * sizeof(Face));
     model.normals = (Normal *) malloc(10000 * sizeof(Normal));
-    model.textures = (Texture *) malloc(10000 * sizeof(Texture));
+    model.texture_coords = (TextureCoord *) malloc(10000 * sizeof(TextureCoord));
 
-    if (face_type == ALL || face_type == VERTEX_TEXTURE) {
+    if (face_type == VERTEX_ALL || face_type == VERTEX_TEXTURE) {
         // TODO: do we need to free this?
         SDL_Surface *sur = IMG_Load(texture_filename);
         glGenTextures(1, &model.texture_id);
@@ -128,22 +75,27 @@ Model load_wavefront_model(char *obj_filename, char *texture_filename, FaceType 
             fscanf(f, " %f %f %f", &n.x, &n.y, &n.z);
             model.normals[++model.num_normals] = n;
         } else if (!strcmp(type, "vt")) {
-            Texture t = {0};
+            TextureCoord t = {0};
 
             fscanf(f, " %f %f", &t.x, &t.y);
             t.y = 1 - t.y;
-            model.textures[++model.num_textures] = t;
+            model.texture_coords[++model.num_texture_coords] = t;
         } else if (!strcmp(type, "f")) {
             Face face = {0};
 
             if (face_type == VERTEX_ONLY) {
-                fscanf(f, " %d %d %d", &face.a, &face.b, &face.c);
+                fscanf(f, " %d %d %d", &face.vertices[0], &face.vertices[1], &face.vertices[2]);
             } else if (face_type == VERTEX_NORMAL) {
-                fscanf(f, " %d//%d %d//%d %d//%d", &face.a, &face.na, &face.b, &face.nb, &face.c, &face.nc);
+                fscanf(f, " %d//%d %d//%d %d//%d", &face.vertices[0], &face.normals[0], &face.vertices[1],
+                                                   &face.normals[1], &face.vertices[2], &face.normals[2]);
             } else if (face_type == VERTEX_TEXTURE) {
                 // TODO
-            } else if (face_type == ALL) {
-                fscanf(f, " %d/%d/%d %d/%d/%d %d/%d/%d", &face.a, &face.ta, &face.na, &face.b, &face.tb, &face.nb, &face.c, &face.tc, &face.nc);
+            } else if (face_type == VERTEX_ALL) {
+                fscanf(f, " %d/%d/%d %d/%d/%d %d/%d/%d", &face.vertices[0], &face.texture_coords[0],
+                                                         &face.normals[0], &face.vertices[1],
+                                                         &face.texture_coords[1], &face.normals[1],
+                                                         &face.vertices[2], &face.texture_coords[2],
+                                                         &face.normals[2]);
             } else {
                 assert(false);
             }
@@ -154,134 +106,123 @@ Model load_wavefront_model(char *obj_filename, char *texture_filename, FaceType 
     return model;
 }
 
-void draw_model(Model model) {
+
+void drawModel(Model model) {
     glBindTexture(GL_TEXTURE_2D, model.texture_id);
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
     for (int i = 0; i < model.num_faces; i++) {
         Face f = model.faces[i];
+
         glBegin(GL_TRIANGLES);
-        if (model.num_normals) {
-            glNormal3f(model.normals[f.na].x,
-                       model.normals[f.na].y,
-                       model.normals[f.na].z);
+
+        for (int j = 0; j <= 2; j++) {
+
+            if (model.num_normals) {
+                Normal n = model.normals[f.normals[j]];
+                glNormal3f(n.x, n.y, n.z);
+            }
+
+            if (model.num_texture_coords) {
+                TextureCoord t = model.texture_coords[f.texture_coords[j]];
+                glTexCoord2f(t.x, t.y);
+            }
+
+            Vertex v = model.vertices[f.vertices[j]];
+
+            glVertex3f(v.x, v.y, v.z);
         }
-        if (model.num_textures) {
-            glTexCoord2f(model.textures[f.ta].x,
-                         model.textures[f.ta].y);
-        }
-        glVertex3f(model.vertices[f.a].x,
-                   model.vertices[f.a].y,
-                   model.vertices[f.a].z);
-        if (model.num_normals) {
-            glNormal3f(model.normals[f.nb].x,
-                       model.normals[f.nb].y,
-                       model.normals[f.nb].z);
-        }
-        if (model.num_textures) {
-            glTexCoord2f(model.textures[f.tb].x,
-                         model.textures[f.tb].y);
-        }
-        glVertex3f(model.vertices[f.b].x,
-                   model.vertices[f.b].y,
-                   model.vertices[f.b].z);
-        if (model.num_normals) {
-            glNormal3f(model.normals[f.nc].x,
-                       model.normals[f.nc].y,
-                       model.normals[f.nc].z);
-        }
-        if (model.num_textures) {
-            glTexCoord2f(model.textures[f.tc].x,
-                         model.textures[f.tc].y);
-        }
-        glVertex3f(model.vertices[f.c].x,
-                   model.vertices[f.c].y,
-                   model.vertices[f.c].z);
+
         glEnd();
     }
 
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+
 int main() {
-    SDL_Window *window = getWindow();
-    assert(window);
+    loadLibraries();
+
+    SDL_Window *window = NULL;
+    window = SDL_CreateWindow("InkRivel", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+                              SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+    if (!window) {
+        printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
+        exit(1);
+    }
 
     SDL_GLContext context = SDL_GL_CreateContext(window);
 
+    // OpenGL properties
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_LIGHTING);
     //glDisable(GL_CULL_FACE);
     glShadeModel(GL_SMOOTH);
 
-    // load slime model
-    Model slime = load_wavefront_model("assets/slime.obj", "assets/slime.png", ALL);
-    //Model slime = load_wavefront_model("assets/rolo.obj", "assets/slime.png", VERTEX_NORMAL);
-    Model map = load_wavefront_model("assets/map.obj", "assets/map.png", ALL);
+    // OpenGL projection matrix
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    makeFrustum(45, (float) SCREEN_WIDTH / SCREEN_HEIGHT, 0.1, 100);
 
-    float tranx = 0;
-    float trany = 0;
-    const Uint8 *kbState = SDL_GetKeyboardState(NULL);
-    while (1) {
-        SDL_Event e;
+    // load models
+    Model slime = loadWavefrontModel("assets/slime.obj", "assets/slime.png", VERTEX_ALL);
+    //Model slime = loadWavefrontModel("assets/rolo.obj", "assets/slime.png", VERTEX_NORMAL);
+    Model map = loadWavefrontModel("assets/map.obj", "assets/map.png", VERTEX_ALL);
 
-        while (SDL_PollEvent(&e)) {
-            if (e.type == SDL_QUIT) {
-                goto end;
+    float tran_x = 0;
+    float tran_y = 0;
+    const Uint8 *kb_state = SDL_GetKeyboardState(NULL);
+    bool running = true;
+    while (running) {
+        // handle events
+        {
+            SDL_Event e;
+            while (SDL_PollEvent(&e)) {
+                if (e.type == SDL_QUIT) {
+                    running = false;
+                }
             }
         }
 
-        int mouseX_int, mouseY_int;
-        SDL_GetMouseState(&mouseX_int, &mouseY_int);
-        // TODO: fix this
-        float mouseX = mouseX_int;
-        float mouseY = mouseY_int;
-        mouseX -= 400;
-        mouseY -= 300;
-        float norm = sqrt(mouseX * mouseX + mouseY * mouseY);
-        mouseX /= norm;
-        mouseY /= norm;
-        float mouseAngle = atan2(mouseY, mouseX) * 180 / M_PI;
-        mouseAngle += 90;
-        mouseAngle *= -1;
-        //printf("Mouse %d %d\n", mouseX, mouseY);
-        //printf("Mouse angle %f\n", mouseAngle);
+        // mouse position relative to the middle of the window
+        float mouse_x, mouse_y;
+        float mouse_angle;
+        {
+            int int_mouse_x, int_mouse_y;
+            SDL_GetMouseState(&int_mouse_x, &int_mouse_y);
+            mouse_x = int_mouse_x;
+            mouse_y = int_mouse_y;
+            mouse_x -= SCREEN_WIDTH/2;
+            mouse_y -= SCREEN_HEIGHT/2;
+            float norm = sqrt(mouse_x * mouse_x + mouse_y * mouse_y);
+            mouse_x /= norm;
+            mouse_y /= norm;
+            mouse_angle = atan2(mouse_y, mouse_x) * 180 / M_PI;
+            mouse_angle += 90;
+            mouse_angle *= -1;
+        }
 
-#if 0
-        if (kbState[SDL_SCANCODE_W]) {
-            trany += 0.02;
+        // move object in the direction of the mouse when W is pressed
+        // TODO: use delta_time
+        if (kb_state[SDL_SCANCODE_W]) {
+            tran_x += mouse_x * 0.02;
+            tran_y -= mouse_y * 0.02;
         }
-        if (kbState[SDL_SCANCODE_A]) {
-            tranx -= 0.02;
-        }
-        if (kbState[SDL_SCANCODE_S]) {
-            trany -= 0.02;
-        }
-        if (kbState[SDL_SCANCODE_D]) {
-            tranx += 0.02;
-        }
-#else
-        if (kbState[SDL_SCANCODE_W]) {
-            // set trany/tranx based on direction from mouse
-            tranx += mouseX * 0.02;
-            trany -= mouseY * 0.02;
-        }
-#endif
+
+
+        // render
 
         glClearColor(0.4, 0.6, 1, 1);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
-        makeFrustum(45, 4.0/3, 0.1, 100);
-
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
-        glTranslatef(0, 0, -8);
-        glTranslatef(-tranx, -trany, 0);
 
-        // draw light
+        // set camera position
+        glTranslatef(-tran_x, -tran_y, -8);
+
+        // draw sun
         {
             glEnable(GL_LIGHT0);
             GLfloat light_position[] = { 100, 100, 150, 1 };
@@ -309,10 +250,10 @@ int main() {
             glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
             glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
             glPushMatrix();
-            glTranslatef(tranx, trany, 4);
-            glRotatef(mouseAngle, 0, 0, 1);
+            glTranslatef(tran_x, tran_y, 0.2);
+            glRotatef(mouse_angle, 0, 0, 1);
             glScalef(0.2, 0.2, 0.2);
-            draw_model(slime);
+            drawModel(slime);
             glPopMatrix();
         }
 
@@ -327,16 +268,14 @@ int main() {
             glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
             glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
             glPushMatrix();
-            //glLoadIdentity();
-            glTranslatef(0, 0, 3);
             glScalef(1.0, 1.0, 1.0);
-            draw_model(map);
+            drawModel(map);
             glPopMatrix();
         }
 
         SDL_GL_SwapWindow(window);
     }
 
-end:
     return 0;
 }
+
