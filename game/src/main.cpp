@@ -168,8 +168,8 @@ int main() {
 
     // load models
     //Model slime = loadWavefrontModel("assets/slime.obj", "assets/slime.png", VERTEX_ALL);
-    //Model slime = loadWavefrontModel("assets/rolo.obj", "assets/slime.png", VERTEX_NORMAL);
-    Model slime = loadWavefrontModel("assets/sniper.obj", "assets/slime.png", VERTEX_NORMAL);
+    Model slime = loadWavefrontModel("assets/rolo.obj", "assets/slime.png", VERTEX_NORMAL);
+    //Model slime = loadWavefrontModel("assets/sniper.obj", "assets/slime.png", VERTEX_NORMAL);
     Model map = loadWavefrontModel("assets/map.obj", "assets/map.png", VERTEX_ALL);
 
     float tran_x = 0;
