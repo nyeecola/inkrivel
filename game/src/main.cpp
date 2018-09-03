@@ -42,13 +42,13 @@ void makeFrustum (double fov_y, double aspect_ratio, double front, double back) 
 }
 
 
-Model loadWavefrontModel(char *obj_filename, char *texture_filename, FaceType face_type) {
-    Model model = {0};
+Model loadWavefrontModel(const char *obj_filename, const char *texture_filename, FaceType face_type) {
+    Model model = {};
 
-    model.vertices = (Vertex *) malloc(10000 * sizeof(Vertex));
-    model.faces = (Face *) malloc(10000 * sizeof(Face));
-    model.normals = (Normal *) malloc(10000 * sizeof(Normal));
-    model.texture_coords = (TextureCoord *) malloc(10000 * sizeof(TextureCoord));
+    model.vertices = (Vertex *) malloc(100000 * sizeof(Vertex));
+    model.faces = (Face *) malloc(100000 * sizeof(Face));
+    model.normals = (Normal *) malloc(100000 * sizeof(Normal));
+    model.texture_coords = (TextureCoord *) malloc(100000 * sizeof(TextureCoord));
 
     if (face_type == VERTEX_ALL || face_type == VERTEX_TEXTURE) {
         // TODO: do we need to free this?
@@ -62,26 +62,26 @@ Model loadWavefrontModel(char *obj_filename, char *texture_filename, FaceType fa
     }
 
     FILE *f = fopen(obj_filename, "r");
-    char type[40] = {0};
+    char type[40] = {};
     while ((fscanf(f, " %s", type)) != EOF) {
         if (!strcmp(type, "v")) {
-            Vertex v = {0};
+            Vertex v = {};
 
             fscanf(f, " %f %f %f", &v.x, &v.y, &v.z);
             model.vertices[++model.num_vertices] = v;
         } else if (!strcmp(type, "vn")) {
-            Normal n = {0};
+            Normal n = {};
 
             fscanf(f, " %f %f %f", &n.x, &n.y, &n.z);
             model.normals[++model.num_normals] = n;
         } else if (!strcmp(type, "vt")) {
-            TextureCoord t = {0};
+            TextureCoord t = {};
 
             fscanf(f, " %f %f", &t.x, &t.y);
             t.y = 1 - t.y;
             model.texture_coords[++model.num_texture_coords] = t;
         } else if (!strcmp(type, "f")) {
-            Face face = {0};
+            Face face = {};
 
             if (face_type == VERTEX_ONLY) {
                 fscanf(f, " %d %d %d", &face.vertices[0], &face.vertices[1], &face.vertices[2]);
@@ -151,7 +151,8 @@ int main() {
         exit(1);
     }
 
-    SDL_GLContext context = SDL_GL_CreateContext(window);
+    // ignoring return value
+    SDL_GL_CreateContext(window);
 
     // OpenGL properties
     glEnable(GL_TEXTURE_2D);
@@ -166,8 +167,9 @@ int main() {
     makeFrustum(45, (float) SCREEN_WIDTH / SCREEN_HEIGHT, 0.1, 100);
 
     // load models
-    Model slime = loadWavefrontModel("assets/slime.obj", "assets/slime.png", VERTEX_ALL);
+    //Model slime = loadWavefrontModel("assets/slime.obj", "assets/slime.png", VERTEX_ALL);
     //Model slime = loadWavefrontModel("assets/rolo.obj", "assets/slime.png", VERTEX_NORMAL);
+    Model slime = loadWavefrontModel("assets/sniper.obj", "assets/slime.png", VERTEX_NORMAL);
     Model map = loadWavefrontModel("assets/map.obj", "assets/map.png", VERTEX_ALL);
 
     float tran_x = 0;
