@@ -218,7 +218,7 @@ int main() {
     // load slime model
     Model slime = load_wavefront_model("assets/slime.obj", "assets/slime.png", ALL);
     //Model slime = load_wavefront_model("assets/rolo.obj", "assets/slime.png", VERTEX_NORMAL);
-    Model map = load_wavefront_model("assets/map.obj", "assets/slime.png", VERTEX_NORMAL);
+    Model map = load_wavefront_model("assets/map.obj", "assets/map.png", ALL);
 
     float tranx = 0;
     float trany = 0;
