@@ -1,24 +1,29 @@
+#include <stdio.h>
+#include <string.h>
+#include <pthread.h>
 #include <errno.h>
+
+#include <unistd.h>
 #include <fcntl.h>
 #include <sys/socket.h>
-#include <stdio.h>
 #include <netdb.h>
-#include <string.h>
-#include <unistd.h>
-#include <pthread.h>
 
 #define SERVER_ADDRESS "127.0.0.1"
 #define SERVER_PORT 17555
 
+#define MAX_MESSAGE_SIZE 255
+
 void *listen_server(void *arg) {
     for (;;) {
+        // avoid burning cycles
         usleep(10000);
 
+        // socket file descriptor
         int socket_fd = (int) arg;
 
         // read messages from server
-        char buffer[256] = {0};
-        int n = read(socket_fd, buffer, 255);
+        char buffer[MAX_MESSAGE_SIZE+1] = {0};
+        int n = read(socket_fd, buffer, MAX_MESSAGE_SIZE);
         if (n > 0) {
             fprintf(stdout, "%s", buffer);
             fflush(stdout);
@@ -50,8 +55,8 @@ int main(int argc, char **argv) {
     server_address.sin_port = htons(SERVER_PORT);
 
     // connect to server
-    int err = connect(socket_fd, (struct sockaddr *) &server_address, sizeof(server_address)) < 0;
-    if (err) {
+    int err = connect(socket_fd, (struct sockaddr *) &server_address, sizeof(server_address));
+    if (err < 0) {
         fprintf(stderr, "%d %d\n", err, errno);
         fprintf(stderr, "ERROR: %s\n", strerror(errno));
         return -1;
@@ -68,9 +73,9 @@ int main(int argc, char **argv) {
         // avoid burning cycles
         usleep(10000);
 
-        char buffer[256] = {0};
-        fgets(buffer, 255, stdin);
-        int n = write(socket_fd, buffer, 256);
+        char buffer[MAX_MESSAGE_SIZE+1] = {0};
+        fgets(buffer, MAX_MESSAGE_SIZE, stdin);
+        int n = write(socket_fd, buffer, MAX_MESSAGE_SIZE+1);
         if (n < 0) {
             fprintf(stderr, "ERROR: Failed to send message to server.\n");
         } else {
