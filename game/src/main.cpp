@@ -295,92 +295,87 @@ int main() {
 
         // collision
 
-        for (int i = 0; i < map.num_faces; i++) {
-            Face *cur = &map.faces[i];
+        if (slime.dir.len()) {
+            for (int i = 0; i < map.num_faces; i++) {
+                Face *cur = &map.faces[i];
 
-            Vector v1 = map.vertices[cur->vertices[2]] - map.vertices[cur->vertices[0]];
-            Vector v2 = map.vertices[cur->vertices[1]] - map.vertices[cur->vertices[0]];
-            Vector normal = v1.cross(v2);
-            normal.normalize();
-            if (normal.z < 0) {
-                normal = normal * -1;
-            }
+                Vector v1 = map.vertices[cur->vertices[2]] - map.vertices[cur->vertices[0]];
+                Vector v2 = map.vertices[cur->vertices[1]] - map.vertices[cur->vertices[0]];
+                Vector normal = v1.cross(v2);
+                normal.normalize();
+                if (normal.z < 0) {
+                    normal = normal * -1;
+                }
 
-            Vector up = {0, 0, 1};
+                Vector up = {0, 0, 1};
 
-            float cosine = normal.dot(up);
+                float cosine = normal.dot(up);
 
-            float angle = acos(cosine) * 180 / M_PI;
+                float angle = acos(cosine) * 180 / M_PI;
 
-            // Sphere-Triangle collision from: http://realtimecollisiondetection.net/blog/?p=103
-            if (angle > 60) {
-                Vector A = map.vertices[cur->vertices[0]] - slime.pos;
-                Vector B = map.vertices[cur->vertices[1]] - slime.pos;
-                Vector C = map.vertices[cur->vertices[2]] - slime.pos;
-                float rr = slime.hit_radius * slime.hit_radius;
-                Vector V = (B - A).cross(C - A);
-                float d = A.dot(V);
-                float e = V.dot(V);
+                // Sphere-Triangle collision from: http://realtimecollisiondetection.net/blog/?p=103
+                if (angle > 60) {
+                    Vector A = map.vertices[cur->vertices[0]] - slime.pos;
+                    Vector B = map.vertices[cur->vertices[1]] - slime.pos;
+                    Vector C = map.vertices[cur->vertices[2]] - slime.pos;
+                    float rr = slime.hit_radius * slime.hit_radius;
+                    Vector V = (B - A).cross(C - A);
+                    float d = A.dot(V);
+                    float e = V.dot(V);
 
-                bool sep1 = d*d > rr*e;
+                    bool sep1 = d*d > rr*e;
 
-                float aa = A.dot(A);
-                float ab = A.dot(B);
-                float ac = A.dot(C);
-                float bb = B.dot(B);
-                float bc = B.dot(C);
-                float cc = C.dot(C);
+                    float aa = A.dot(A);
+                    float ab = A.dot(B);
+                    float ac = A.dot(C);
+                    float bb = B.dot(B);
+                    float bc = B.dot(C);
+                    float cc = C.dot(C);
 
-                bool sep2 = (aa > rr) && (ab > aa) && (ac > aa);
-                bool sep3 = (bb > rr) && (ab > bb) && (bc > bb);
-                bool sep4 = (cc > rr) && (ac > cc) && (bc > cc);
+                    bool sep2 = (aa > rr) && (ab > aa) && (ac > aa);
+                    bool sep3 = (bb > rr) && (ab > bb) && (bc > bb);
+                    bool sep4 = (cc > rr) && (ac > cc) && (bc > cc);
 
-                Vector AB = B - A;
-                Vector BC = C - B;
-                Vector CA = A - C;
+                    Vector AB = B - A;
+                    Vector BC = C - B;
+                    Vector CA = A - C;
 
-                float d1 = ab - aa;
-                float d2 = bc - bb;
-                float d3 = ac - cc;
+                    float d1 = ab - aa;
+                    float d2 = bc - bb;
+                    float d3 = ac - cc;
 
-                float e1 = AB.dot(AB);
-                float e2 = BC.dot(BC);
-                float e3 = CA.dot(CA);
+                    float e1 = AB.dot(AB);
+                    float e2 = BC.dot(BC);
+                    float e3 = CA.dot(CA);
 
-                Vector Q1 = A*e1 - d1*AB;
-                Vector Q2 = B*e2 - d2*BC;
-                Vector Q3 = C*e3 - d3*CA;
-                Vector QC = C*e1 - Q1;
-                Vector QA = A*e2 - Q2;
-                Vector QB = B*e3 - Q3;
+                    Vector Q1 = A*e1 - d1*AB;
+                    Vector Q2 = B*e2 - d2*BC;
+                    Vector Q3 = C*e3 - d3*CA;
+                    Vector QC = C*e1 - Q1;
+                    Vector QA = A*e2 - Q2;
+                    Vector QB = B*e3 - Q3;
 
-                bool sep5 = (Q1.dot(Q1) > rr * e1 * e1) && (Q1.dot(QC) > 0);
-                bool sep6 = (Q2.dot(Q2) > rr * e2 * e2) && (Q2.dot(QA) > 0);
-                bool sep7 = (Q3.dot(Q3) > rr * e3 * e3) && (Q3.dot(QB) > 0);
+                    bool sep5 = (Q1.dot(Q1) > rr * e1 * e1) && (Q1.dot(QC) > 0);
+                    bool sep6 = (Q2.dot(Q2) > rr * e2 * e2) && (Q2.dot(QA) > 0);
+                    bool sep7 = (Q3.dot(Q3) > rr * e3 * e3) && (Q3.dot(QB) > 0);
 
-                bool separated = sep1 || sep2 || sep3 || sep4 || sep5 || sep6 || sep7;
+                    bool separated = sep1 || sep2 || sep3 || sep4 || sep5 || sep6 || sep7;
 
-                if (!separated) {
-                    Normal norm1 = map.normals[cur->normals[0]];
-                    Normal norm2 = map.normals[cur->normals[1]];
-                    Normal norm3 = map.normals[cur->normals[2]];
+                    if (!separated && slime.dir.dot(normal) > 0) {
+                        normal.z = 0;
+                        normal.normalize();
+                        normal *= slime.speed * normal.dot(slime.dir) / (normal.len()*slime.dir.len());
 
-                    Vector dir1 = {norm1.x, norm1.y, norm1.z};
-                    Vector dir2 = {norm2.x, norm2.y, norm2.z};
-                    Vector dir3 = {norm3.x, norm3.y, norm3.z};
-
-                    Vector dir = dir1 + dir2 + dir3;
-                    dir.z = 0;
-                    dir.normalize();
-                    dir *= -slime.speed;// * dir.dot(slime.dir) / (dir.len()*slime.dir.len());
-
-                    if (!(isnan(dir.x) || isnan(dir.y) || isnan(dir.z))) {
-                        slime.dir -= dir;
+                        slime.dir -= normal;
                     }
                 }
             }
         }
 
+        if (slime.dir.len() > slime.speed) {
+            slime.dir.normalize();
+            slime.dir *= slime.speed;
+        }
         slime.pos += slime.dir;
 
         // render

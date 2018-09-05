@@ -69,12 +69,6 @@ class Vector {
             return Vector(x * m, y * m, z * m);
         }
 
-        inline Vector operator | (const Vector &_d) const {
-            return Vector(y * _d.z - z * _d.y,
-                    z * _d.x - x * _d.z,
-                    x * _d.y - y * _d.x);
-        }
-
         inline bool operator == (const Vector &_v) const {
             if (x == _v.x && y == _v.y && z == _v.z)
                 return true;
