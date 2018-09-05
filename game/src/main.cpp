@@ -13,8 +13,8 @@
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 600
 
-#define max(a, b) ((a) > (b) ? a : b)
-#define min(a, b) ((a) < (b) ? a : b)
+#define MAX(a, b) ((a) > (b) ? a : b)
+#define MIN(a, b) ((a) < (b) ? a : b)
 
 void loadLibraries() {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -241,15 +241,12 @@ int main() {
     makeFrustum(45, (float) SCREEN_WIDTH / SCREEN_HEIGHT, 0.1, 100);
 
     // load models
-    //Model slime = loadWavefrontModel("assets/slime.obj", "assets/slime.png", VERTEX_ALL);
-    //Model slime_model = loadWavefrontModel("assets/rolo.obj", "assets/slime.png", VERTEX_NORMAL);
-    //Model slime = loadWavefrontModel("assets/sniper.obj", "assets/slime.png", VERTEX_NORMAL);
     Model map = loadWavefrontModel("assets/map.obj", "assets/map.png", VERTEX_ALL);
 
     Character slime;
     slime.pos = {0, 0, 0};
-    slime.hit_radius = 0.4;
-    slime.model = loadWavefrontModel("assets/rolo.obj", "assets/slime.png", VERTEX_NORMAL);
+    slime.hit_radius = 0.25;
+    slime.model = loadWavefrontModel("assets/slime.obj", "assets/slime.png", VERTEX_ALL);
 
     const Uint8 *kb_state = SDL_GetKeyboardState(NULL);
     bool running = true;
@@ -294,80 +291,83 @@ int main() {
         for (int i = 0; i < map.num_faces; i++) {
             Face *cur = &map.faces[i];
 
-            int min = getMinVertex(&map, cur);
-            int max = getMaxVertex(&map, cur);
+            Vector v1 = map.vertices[cur->vertices[2]] - map.vertices[cur->vertices[0]];
+            Vector v2 = map.vertices[cur->vertices[1]] - map.vertices[cur->vertices[0]];
+            Vector normal = v1.cross(v2);
+            normal.normalize();
+            if (normal.z < 0) {
+                normal = normal * -1;
+            }
 
-            Vector slope = map.vertices[cur->vertices[max]] - map.vertices[cur->vertices[min]];
+            Vector up = {0, 0, 1};
 
-            if (slope.x || slope.y || slope.z) {
-                float norm = sqrt(slope.x*slope.x + slope.y*slope.y);
+            float cosine = normal.dot(up);
 
-                float angle = atan2(slope.z, norm) * 180 / M_PI;
+            float angle = acos(cosine) * 180 / M_PI;
 
-                // Sphere-Triangle collision from: http://realtimecollisiondetection.net/blog/?p=103
-                if (angle > 0) {
-                    Vector A = map.vertices[cur->vertices[0]] - slime.pos;
-                    Vector B = map.vertices[cur->vertices[1]] - slime.pos;
-                    Vector C = map.vertices[cur->vertices[2]] - slime.pos;
-                    float rr = slime.hit_radius * slime.hit_radius;
-                    Vector V = (B - A).cross(C - A);
-                    float d = A.dot(V);
-                    float e = V.dot(V);
+            // Sphere-Triangle collision from: http://realtimecollisiondetection.net/blog/?p=103
+            if (angle > 60) {
+                Vector A = map.vertices[cur->vertices[0]] - slime.pos;
+                Vector B = map.vertices[cur->vertices[1]] - slime.pos;
+                Vector C = map.vertices[cur->vertices[2]] - slime.pos;
+                float rr = slime.hit_radius * slime.hit_radius;
+                Vector V = (B - A).cross(C - A);
+                float d = A.dot(V);
+                float e = V.dot(V);
 
-                    bool sep1 = d*d > rr*e;
+                bool sep1 = d*d > rr*e;
 
-                    float aa = A.dot(A);
-                    float ab = A.dot(B);
-                    float ac = A.dot(C);
-                    float bb = B.dot(B);
-                    float bc = B.dot(C);
-                    float cc = C.dot(C);
+                float aa = A.dot(A);
+                float ab = A.dot(B);
+                float ac = A.dot(C);
+                float bb = B.dot(B);
+                float bc = B.dot(C);
+                float cc = C.dot(C);
 
-                    bool sep2 = (aa > rr) && (ab > aa) && (ac > aa);
-                    bool sep3 = (bb > rr) && (ab > bb) && (bc > bb);
-                    bool sep4 = (cc > rr) && (ac > cc) && (bc > cc);
+                bool sep2 = (aa > rr) && (ab > aa) && (ac > aa);
+                bool sep3 = (bb > rr) && (ab > bb) && (bc > bb);
+                bool sep4 = (cc > rr) && (ac > cc) && (bc > cc);
 
-                    Vector AB = B - A;
-                    Vector BC = C - B;
-                    Vector CA = A - C;
+                Vector AB = B - A;
+                Vector BC = C - B;
+                Vector CA = A - C;
 
-                    float d1 = ab - aa;
-                    float d2 = bc - bb;
-                    float d3 = ac - cc;
+                float d1 = ab - aa;
+                float d2 = bc - bb;
+                float d3 = ac - cc;
 
-                    float e1 = AB.dot(AB);
-                    float e2 = BC.dot(BC);
-                    float e3 = CA.dot(CA);
+                float e1 = AB.dot(AB);
+                float e2 = BC.dot(BC);
+                float e3 = CA.dot(CA);
 
-                    Vector Q1 = A*e1 - d1*AB;
-                    Vector Q2 = B*e2 - d2*BC;
-                    Vector Q3 = C*e3 - d3*CA;
-                    Vector QC = C*e1 - Q1;
-                    Vector QA = A*e2 - Q2;
-                    Vector QB = B*e3 - Q3;
+                Vector Q1 = A*e1 - d1*AB;
+                Vector Q2 = B*e2 - d2*BC;
+                Vector Q3 = C*e3 - d3*CA;
+                Vector QC = C*e1 - Q1;
+                Vector QA = A*e2 - Q2;
+                Vector QB = B*e3 - Q3;
 
-                    bool sep5 = (Q1.dot(Q1) > rr * e1 * e1) && (Q1.dot(QC) > 0);
-                    bool sep6 = (Q2.dot(Q2) > rr * e2 * e2) && (Q2.dot(QA) > 0);
-                    bool sep7 = (Q3.dot(Q3) > rr * e3 * e3) && (Q3.dot(QB) > 0);
+                bool sep5 = (Q1.dot(Q1) > rr * e1 * e1) && (Q1.dot(QC) > 0);
+                bool sep6 = (Q2.dot(Q2) > rr * e2 * e2) && (Q2.dot(QA) > 0);
+                bool sep7 = (Q3.dot(Q3) > rr * e3 * e3) && (Q3.dot(QB) > 0);
 
-                    bool separated = sep1 || sep2 || sep3 || sep4 || sep5 || sep6 || sep7;
+                bool separated = sep1 || sep2 || sep3 || sep4 || sep5 || sep6 || sep7;
 
-                    if (!separated) {
-                        Normal norm1 = map.normals[cur->normals[0]];
-                        Normal norm2 = map.normals[cur->normals[1]];
-                        Normal norm3 = map.normals[cur->normals[2]];
+                if (!separated) {
+                    Normal norm1 = map.normals[cur->normals[0]];
+                    Normal norm2 = map.normals[cur->normals[1]];
+                    Normal norm3 = map.normals[cur->normals[2]];
 
-                        Vector dir1 = {norm1.x, norm1.y, norm1.z};
-                        Vector dir2 = {norm2.x, norm2.y, norm2.z};
-                        Vector dir3 = {norm3.x, norm3.y, norm3.z};
+                    Vector dir1 = {norm1.x, norm1.y, norm1.z};
+                    Vector dir2 = {norm2.x, norm2.y, norm2.z};
+                    Vector dir3 = {norm3.x, norm3.y, norm3.z};
 
-                        Vector dir = dir1 + dir2 + dir3;
-                        dir.z = 0;
-                        dir.normalize();
-                        dir /= 50;
+                    Vector dir = dir1 + dir2 + dir3;
+                    dir.z = 0;
+                    dir.normalize();
+                    dir /= 50;
 
-                        slime.pos += dir;
-                    }
+                    slime.pos += dir;
                 }
             }
         }
