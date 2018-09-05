@@ -1,5 +1,4 @@
-#ifndef MAP_H
-#define MAP_H
+#pragma once
 
 #include <string>
 #include "character.hpp"
@@ -15,5 +14,3 @@ private:
     int height;
     Character characterList[];
 };
-
-#endif

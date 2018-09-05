@@ -1,11 +1,16 @@
 #pragma once
 
+#include <GL/gl.h>
+#include "vector.hpp"
+
+#if 0
 class Vertex {
 public:
     float x;
     float y;
     float z;
 };
+#endif
 
 class Normal {
 public:
@@ -29,7 +34,7 @@ public:
 
 class Model {
 public:
-    Vertex *vertices;
+    Vector *vertices;
     int num_vertices;
     Face *faces;
     int num_faces;
