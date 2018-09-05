@@ -11,6 +11,8 @@ class Character {
 public:
     //string name;
     Vector pos;
+    float speed;
+    Vector dir;
 
     //int damage;
     //float range;
