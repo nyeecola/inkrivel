@@ -247,6 +247,8 @@ int main() {
     slime.pos = {0, 0, 0};
     slime.hit_radius = 0.25;
     slime.model = loadWavefrontModel("assets/slime.obj", "assets/slime.png", VERTEX_ALL);
+    slime.speed = 0.02;
+    slime.dir = {0, 0, 0};
 
     const Uint8 *kb_state = SDL_GetKeyboardState(NULL);
     bool running = true;
@@ -282,8 +284,13 @@ int main() {
         // move object in the direction of the mouse when W is pressed
         // TODO: use delta_time
         if (kb_state[SDL_SCANCODE_W]) {
-            slime.pos.x += mouse_x * 0.02;
-            slime.pos.y -= mouse_y * 0.02;
+            slime.dir.x = mouse_x;
+            slime.dir.y = -mouse_y;
+            slime.dir.normalize();
+            slime.dir *= slime.speed;
+        }
+        else {
+            slime.dir = {0, 0, 0};
         }
 
         // collision
@@ -371,6 +378,8 @@ int main() {
                 }
             }
         }
+
+        slime.pos += slime.dir;
 
         // render
 
