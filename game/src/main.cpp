@@ -372,9 +372,11 @@ int main() {
                     Vector dir = dir1 + dir2 + dir3;
                     dir.z = 0;
                     dir.normalize();
-                    dir /= 50;
+                    dir *= -slime.speed;// * dir.dot(slime.dir) / (dir.len()*slime.dir.len());
 
-                    slime.pos += dir;
+                    if (!(isnan(dir.x) || isnan(dir.y) || isnan(dir.z))) {
+                        slime.dir -= dir;
+                    }
                 }
             }
         }
