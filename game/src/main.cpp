@@ -6,12 +6,14 @@
 #include <assert.h>
 
 #include "render-types.hpp"
-#include "sphere.hpp"
 #include "vector.hpp"
 #include "base/character.hpp"
+#include "base/map.hpp"
 
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 600
+
+#define DEBUG 0
 
 #define MAX(a, b) ((a) > (b) ? a : b)
 #define MIN(a, b) ((a) < (b) ? a : b)
@@ -142,44 +144,6 @@ void drawModel(Model model) {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-int getMaxVertex(Model *map, Face *cur) {
-    if (map->vertices[cur->vertices[0]].z > map->vertices[cur->vertices[1]].z) {
-        if (map->vertices[cur->vertices[0]].z > map->vertices[cur->vertices[2]].z) {
-            return 0;
-        }
-        else {
-            return 2;
-        }
-    }
-    else {
-        if (map->vertices[cur->vertices[1]].z > map->vertices[cur->vertices[2]].z) {
-            return 1;
-        }
-        else {
-            return 2;
-        }
-    }
-};
-
-int getMinVertex(Model *map, Face *cur) {
-    if (map->vertices[cur->vertices[0]].z < map->vertices[cur->vertices[1]].z) {
-        if (map->vertices[cur->vertices[0]].z < map->vertices[cur->vertices[2]].z) {
-            return 0;
-        }
-        else {
-            return 2;
-        }
-    }
-    else {
-        if (map->vertices[cur->vertices[1]].z < map->vertices[cur->vertices[2]].z) {
-            return 1;
-        }
-        else {
-            return 2;
-        }
-    }
-};
-
 // Base for sphere code:
 // https://stackoverflow.com/questions/7687148/drawing-sphere-in-opengl-without-using-glusphere
 void drawSphere(Vector center, float radius) {
@@ -187,7 +151,7 @@ void drawSphere(Vector center, float radius) {
 
     GLfloat mat_ambient[] = { 0.4, 0.0, 0.0, 1.0 };
     GLfloat mat_diffuse[] = { 1.0, 0.1, 0.1, 1.0 };
-    GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
+    GLfloat mat_specular[] = { 1.0, 0.1, 0.1, 1.0 };
     GLfloat mat_shininess[] = { 1.0 };
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, mat_ambient);
     glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_diffuse);
@@ -240,15 +204,18 @@ int main() {
     glLoadIdentity();
     makeFrustum(45, (float) SCREEN_WIDTH / SCREEN_HEIGHT, 0.1, 100);
 
-    // load models
-    Model map = loadWavefrontModel("assets/map.obj", "assets/map.png", VERTEX_ALL);
-
+    // Create player slime
     Character slime;
     slime.pos = {0, 0, 0};
     slime.hit_radius = 0.25;
     slime.model = loadWavefrontModel("assets/slime.obj", "assets/slime.png", VERTEX_ALL);
     slime.speed = 0.02;
     slime.dir = {0, 0, 0};
+
+    // Create map
+    Map map;
+    map.model = loadWavefrontModel("assets/map.obj", "assets/map.png", VERTEX_ALL);
+    map.characterList[0] = &slime;
 
     const Uint8 *kb_state = SDL_GetKeyboardState(NULL);
     bool running = true;
@@ -294,13 +261,12 @@ int main() {
         }
 
         // collision
-
         if (slime.dir.len()) {
-            for (int i = 0; i < map.num_faces; i++) {
-                Face *cur = &map.faces[i];
+            for (int i = 0; i < map.model.num_faces; i++) {
+                Face *cur = &map.model.faces[i];
 
-                Vector v1 = map.vertices[cur->vertices[2]] - map.vertices[cur->vertices[0]];
-                Vector v2 = map.vertices[cur->vertices[1]] - map.vertices[cur->vertices[0]];
+                Vector v1 = map.model.vertices[cur->vertices[2]] - map.model.vertices[cur->vertices[0]];
+                Vector v2 = map.model.vertices[cur->vertices[1]] - map.model.vertices[cur->vertices[0]];
                 Vector normal = v1.cross(v2);
                 normal.normalize();
                 if (normal.z < 0) {
@@ -315,9 +281,9 @@ int main() {
 
                 // Sphere-Triangle collision from: http://realtimecollisiondetection.net/blog/?p=103
                 if (angle > 60) {
-                    Vector A = map.vertices[cur->vertices[0]] - slime.pos;
-                    Vector B = map.vertices[cur->vertices[1]] - slime.pos;
-                    Vector C = map.vertices[cur->vertices[2]] - slime.pos;
+                    Vector A = map.model.vertices[cur->vertices[0]] - slime.pos;
+                    Vector B = map.model.vertices[cur->vertices[1]] - slime.pos;
+                    Vector C = map.model.vertices[cur->vertices[2]] - slime.pos;
                     float rr = slime.hit_radius * slime.hit_radius;
                     Vector V = (B - A).cross(C - A);
                     float d = A.dot(V);
@@ -372,6 +338,7 @@ int main() {
             }
         }
 
+        // Slime movement
         if (slime.dir.len() > slime.speed) {
             slime.dir.normalize();
             slime.dir *= slime.speed;
@@ -425,7 +392,7 @@ int main() {
         }
 
         // draw slime hitsphere
-#if 0
+#if DEBUG
         drawSphere(slime.pos, slime.hit_radius);
 #endif
 
@@ -441,7 +408,7 @@ int main() {
             glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
             glPushMatrix();
             glScalef(1.0, 1.0, 1.0);
-            drawModel(map);
+            drawModel(map.model);
             glPopMatrix();
         }
 

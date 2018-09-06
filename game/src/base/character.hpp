@@ -1,7 +1,6 @@
 #pragma once
 
-#include "../render-types.hpp"
-#include "sphere.hpp"
+#include "render-types.hpp"
 #include "vector.hpp"
 #include <string>
 

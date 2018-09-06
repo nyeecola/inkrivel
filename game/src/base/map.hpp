@@ -7,10 +7,6 @@ using namespace std;
 
 class Map {
 public:
-    Map(int width, int height, string name);
-private:
-    string name;
-    int width;
-    int height;
-    Character characterList[];
+    Character *characterList[8];
+    Model model;
 };
