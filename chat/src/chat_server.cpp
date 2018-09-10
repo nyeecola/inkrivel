@@ -8,8 +8,53 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include "chat_types.h"
+
 #define SERVER_PORT 17555
 #define MAX_PENDING_CONNECTIONS 5
+
+void chatSendBackMessage(int socket_fd, const char *sender, uint32_t timestamp, const char *message) {
+    int len_sender = strlen(sender) + 1;
+    int len_message = strlen(message) + 1;
+    int len_timestamp = sizeof(uint32_t);
+
+
+    Packet p;
+    p.id = MSG_RCV_MESSAGE;
+    p.size = len_sender + len_timestamp + len_message;
+    p.body = (byte *) calloc(p.size, sizeof(*p.body)); 
+    memcpy(p.body, sender, len_sender);
+    memcpy(p.body + len_sender, &timestamp, len_timestamp);
+    memcpy(p.body + len_sender + len_timestamp, message, len_message);
+
+    sendPacket(socket_fd, p);
+
+    free(p.body);
+}
+
+void chatSendBackWhisper(int socket_fd, const char *sender, uint32_t timestamp, const char *message) {
+    int len_sender = strlen(sender) + 1;
+    int len_message = strlen(message) + 1;
+    int len_timestamp = sizeof(uint32_t);
+
+
+    Packet p;
+    p.id = MSG_RCV_WHISPER;
+    p.size = len_sender + len_timestamp + len_message;
+    p.body = (byte *) calloc(p.size, sizeof(*p.body)); 
+    memcpy(p.body, sender, len_sender);
+    memcpy(p.body + len_sender, &timestamp, len_timestamp);
+    memcpy(p.body + len_sender + len_timestamp, message, len_message);
+
+    sendPacket(socket_fd, p);
+
+    free(p.body);
+}
+
+void chatSendUserList(int socket_fd, const char *userlist) {
+    // TODO
+}
+
 
 int main(int argc, char **argv) {
 
@@ -67,11 +112,13 @@ int main(int argc, char **argv) {
             sockets[++last_socket_fd_id] = next_socket_fd;
             fprintf(stdout, "Connection received.\n");
 
+#if 0
             // send a hello message to client
             int n = write(next_socket_fd, "Hello from server!\n", 200);
             if (n < 0) {
                 fprintf(stderr, "ERROR: Failed to talk to client.\n");
             }
+#endif
         }
 
         // loop through all sockets
@@ -79,19 +126,25 @@ int main(int argc, char **argv) {
             if (sockets[i] == -1) continue; // TODO: stop doing this, fix sockets list
 
             // read next information on socket if any (non-blocking)
-            char buffer[257] = {0};
-            int n = read(sockets[i], buffer, 256);
+            byte *buffer = (byte *) calloc(MAX_MESSAGE_SIZE, sizeof(*buffer));;
+
+            // TODO: read multiple packets together
+
+            int n = read(sockets[i], buffer, MAX_MESSAGE_SIZE);
             if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
                 fprintf(stderr, "ERROR: Something went wrong when reading from socket %d.\n", sockets[i]);
+                free(buffer);
                 continue;
             }
 
             // skip sockets with no message
             if (n <= 0) {
+                free(buffer);
                 continue;
             }
 
             // if a new message was received, log it ...
+#if 0
             fprintf(stdout, "Client %d: %s\n", sockets[i], buffer);
             char send_buffer[400] = {0};
 
@@ -107,6 +160,43 @@ int main(int argc, char **argv) {
                     continue;
                 }
             }
+#else
+            Packet p = {};            
+            p.id = buffer[0];
+            p.size = buffer[1] << 8;
+            p.size |= buffer[2];
+            p.body = (byte *) calloc(p.size, sizeof(*p.body));
+            memcpy(p.body, &buffer[3], p.size);
+
+            switch (p.id) {
+                case MSG_CONNECT:
+                    {
+                        printf("CONNECT: %d %d %s\n", p.id, p.size, p.body);
+                        chatSendBackMessage(sockets[i], "Server", 321941092, "Connected.");
+                    } break;
+                case MSG_SEND_MESSAGE:
+                    {
+                        printf("SEND MESSAGE: %d %d %s\n", p.id, p.size, p.body);
+                    } break;
+                case MSG_SEND_WHISPER:
+                    {
+                        int len_destination = strlen(p.body);
+                        char *destination = (char *) calloc(len_destination + 1, sizeof(*destination));;
+                        memcpy(destination, p.body, len_destination);
+
+                        int len_message = p.size - len_destination - 1;
+                        char *message = (char *) calloc(len_message, sizeof(*message));
+                        memcpy(message, p.body + len_destination + 1, len_message);
+                        printf("SEND WHISPER: %d %d %s %s\n", p.id, p.size, destination, message);
+
+                        free(destination);
+                        free(message);
+                    } break;
+            }
+
+            free(p.body);
+            free(buffer);
+#endif
         }
     }
 
