@@ -1,19 +1,21 @@
-#ifndef CHARACTER_H
-#define CHARACTER_H
+#pragma once
 
-#include "position.hpp"
-#include "weapon.hpp"
+#include "render-types.hpp"
+#include "vector.hpp"
 #include <string>
 
 using namespace std;
 
 class Character {
 public:
-    Character(string name, Weapon weapon);
-    
-    string name;
-    Weapon weapon;
-    Position position;
-};
+    //string name;
+    Vector pos;
+    float speed;
+    Vector dir;
 
-#endif
+    //int damage;
+    //float range;
+
+    Model model;
+    float hit_radius;
+};

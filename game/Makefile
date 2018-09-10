@@ -80,3 +80,6 @@ test: build/test
 
 build/test: $(TEST_OBJECTS)
 	@$(CXX) $(LDFLAGS) $^ -o $@ && echo "[OK]  $@"
+
+run: release
+	./runner

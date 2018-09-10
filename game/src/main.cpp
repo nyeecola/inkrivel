@@ -6,12 +6,17 @@
 #include <assert.h>
 
 #include "render-types.hpp"
+#include "vector.hpp"
+#include "base/character.hpp"
+#include "base/map.hpp"
 
-#define SCREEN_WIDTH 1366
-#define SCREEN_HEIGHT 768
+#define SCREEN_WIDTH 800
+#define SCREEN_HEIGHT 600
 
-#define max(a, b) ((a) > (b) ? a : b)
-#define min(a, b) ((a) < (b) ? a : b)
+#define DEBUG 0
+
+#define MAX(a, b) ((a) > (b) ? a : b)
+#define MIN(a, b) ((a) < (b) ? a : b)
 
 void loadLibraries() {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -45,7 +50,7 @@ void makeFrustum (double fov_y, double aspect_ratio, double front, double back) 
 Model loadWavefrontModel(const char *obj_filename, const char *texture_filename, FaceType face_type) {
     Model model = {};
 
-    model.vertices = (Vertex *) malloc(100000 * sizeof(Vertex));
+    model.vertices = (Vector *) malloc(100000 * sizeof(Vector));
     model.faces = (Face *) malloc(100000 * sizeof(Face));
     model.normals = (Normal *) malloc(100000 * sizeof(Normal));
     model.texture_coords = (TextureCoord *) malloc(100000 * sizeof(TextureCoord));
@@ -65,7 +70,7 @@ Model loadWavefrontModel(const char *obj_filename, const char *texture_filename,
     char type[40] = {};
     while ((fscanf(f, " %s", type)) != EOF) {
         if (!strcmp(type, "v")) {
-            Vertex v = {};
+            Vector v = {};
 
             fscanf(f, " %f %f %f", &v.x, &v.y, &v.z);
             model.vertices[++model.num_vertices] = v;
@@ -128,7 +133,7 @@ void drawModel(Model model) {
                 glTexCoord2f(t.x, t.y);
             }
 
-            Vertex v = model.vertices[f.vertices[j]];
+            Vector v = model.vertices[f.vertices[j]];
 
             glVertex3f(v.x, v.y, v.z);
         }
@@ -139,6 +144,39 @@ void drawModel(Model model) {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+// Base for sphere code:
+// https://stackoverflow.com/questions/7687148/drawing-sphere-in-opengl-without-using-glusphere
+void drawSphere(Vector center, float radius) {
+    int gradation = 10;
+
+    GLfloat mat_ambient[] = { 0.4, 0.0, 0.0, 1.0 };
+    GLfloat mat_diffuse[] = { 1.0, 0.1, 0.1, 1.0 };
+    GLfloat mat_specular[] = { 1.0, 0.1, 0.1, 1.0 };
+    GLfloat mat_shininess[] = { 1.0 };
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, mat_ambient);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_diffuse);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
+    glPushMatrix();
+    glTranslatef(center.x, center.y, 0.2);
+    //glRotatef(mouse_angle, 0, 0, 1);
+    //glScalef(0.2, 0.2, 0.2);
+    for (float alpha = 0.0; alpha < M_PI; alpha += M_PI/gradation) {
+        glBegin(GL_TRIANGLE_STRIP);
+        for (float beta = 0.0; beta < 2.01*M_PI; beta += M_PI/gradation) {
+            float x = radius*cos(beta)*sin(alpha);
+            float y = radius*sin(beta)*sin(alpha);
+            float z = radius*cos(alpha);
+            glVertex3f(x, y, z);
+            x = radius*cos(beta)*sin(alpha + M_PI/gradation);
+            y = radius*sin(beta)*sin(alpha + M_PI/gradation);
+            z = radius*cos(alpha + M_PI/gradation);
+            glVertex3f(x, y, z);
+        }
+        glEnd();
+    }
+    glPopMatrix();
+}
 
 int main() {
     loadLibraries();
@@ -166,14 +204,19 @@ int main() {
     glLoadIdentity();
     makeFrustum(45, (float) SCREEN_WIDTH / SCREEN_HEIGHT, 0.1, 100);
 
-    // load models
-    //Model slime = loadWavefrontModel("assets/slime.obj", "assets/slime.png", VERTEX_ALL);
-    Model slime = loadWavefrontModel("assets/rolo.obj", "assets/slime.png", VERTEX_NORMAL);
-    //Model slime = loadWavefrontModel("assets/sniper.obj", "assets/slime.png", VERTEX_NORMAL);
-    Model map = loadWavefrontModel("assets/map.obj", "assets/map.png", VERTEX_ALL);
+    // Create player slime
+    Character slime;
+    slime.pos = {0, 0, 0};
+    slime.hit_radius = 0.25;
+    slime.model = loadWavefrontModel("assets/slime.obj", "assets/slime.png", VERTEX_ALL);
+    slime.speed = 0.02;
+    slime.dir = {0, 0, 0};
 
-    float tran_x = 0;
-    float tran_y = 0;
+    // Create map
+    Map map;
+    map.model = loadWavefrontModel("assets/map.obj", "assets/map.png", VERTEX_ALL);
+    map.characterList[0] = &slime;
+
     const Uint8 *kb_state = SDL_GetKeyboardState(NULL);
     bool running = true;
     while (running) {
@@ -208,10 +251,99 @@ int main() {
         // move object in the direction of the mouse when W is pressed
         // TODO: use delta_time
         if (kb_state[SDL_SCANCODE_W]) {
-            tran_x += mouse_x * 0.02;
-            tran_y -= mouse_y * 0.02;
+            slime.dir.x = mouse_x;
+            slime.dir.y = -mouse_y;
+            slime.dir.normalize();
+            slime.dir *= slime.speed;
+        }
+        else {
+            slime.dir = {0, 0, 0};
         }
 
+        // collision
+        if (slime.dir.len()) {
+            for (int i = 0; i < map.model.num_faces; i++) {
+                Face *cur = &map.model.faces[i];
+
+                Vector v1 = map.model.vertices[cur->vertices[2]] - map.model.vertices[cur->vertices[0]];
+                Vector v2 = map.model.vertices[cur->vertices[1]] - map.model.vertices[cur->vertices[0]];
+                Vector normal = v1.cross(v2);
+                normal.normalize();
+                if (normal.z < 0) {
+                    normal = normal * -1;
+                }
+
+                Vector up = {0, 0, 1};
+
+                float cosine = normal.dot(up);
+
+                float angle = acos(cosine) * 180 / M_PI;
+
+                // Sphere-Triangle collision from: http://realtimecollisiondetection.net/blog/?p=103
+                if (angle > 60) {
+                    Vector A = map.model.vertices[cur->vertices[0]] - slime.pos;
+                    Vector B = map.model.vertices[cur->vertices[1]] - slime.pos;
+                    Vector C = map.model.vertices[cur->vertices[2]] - slime.pos;
+                    float rr = slime.hit_radius * slime.hit_radius;
+                    Vector V = (B - A).cross(C - A);
+                    float d = A.dot(V);
+                    float e = V.dot(V);
+
+                    bool sep1 = d*d > rr*e;
+
+                    float aa = A.dot(A);
+                    float ab = A.dot(B);
+                    float ac = A.dot(C);
+                    float bb = B.dot(B);
+                    float bc = B.dot(C);
+                    float cc = C.dot(C);
+
+                    bool sep2 = (aa > rr) && (ab > aa) && (ac > aa);
+                    bool sep3 = (bb > rr) && (ab > bb) && (bc > bb);
+                    bool sep4 = (cc > rr) && (ac > cc) && (bc > cc);
+
+                    Vector AB = B - A;
+                    Vector BC = C - B;
+                    Vector CA = A - C;
+
+                    float d1 = ab - aa;
+                    float d2 = bc - bb;
+                    float d3 = ac - cc;
+
+                    float e1 = AB.dot(AB);
+                    float e2 = BC.dot(BC);
+                    float e3 = CA.dot(CA);
+
+                    Vector Q1 = A*e1 - d1*AB;
+                    Vector Q2 = B*e2 - d2*BC;
+                    Vector Q3 = C*e3 - d3*CA;
+                    Vector QC = C*e1 - Q1;
+                    Vector QA = A*e2 - Q2;
+                    Vector QB = B*e3 - Q3;
+
+                    bool sep5 = (Q1.dot(Q1) > rr * e1 * e1) && (Q1.dot(QC) > 0);
+                    bool sep6 = (Q2.dot(Q2) > rr * e2 * e2) && (Q2.dot(QA) > 0);
+                    bool sep7 = (Q3.dot(Q3) > rr * e3 * e3) && (Q3.dot(QB) > 0);
+
+                    bool separated = sep1 || sep2 || sep3 || sep4 || sep5 || sep6 || sep7;
+
+                    if (!separated && slime.dir.dot(normal) > 0) {
+                        normal.z = 0;
+                        normal.normalize();
+                        normal *= slime.speed * normal.dot(slime.dir) / (normal.len()*slime.dir.len());
+
+                        slime.dir -= normal;
+                    }
+                }
+            }
+        }
+
+        // Slime movement
+        if (slime.dir.len() > slime.speed) {
+            slime.dir.normalize();
+            slime.dir *= slime.speed;
+        }
+        slime.pos += slime.dir;
 
         // render
 
@@ -222,7 +354,7 @@ int main() {
         glLoadIdentity();
 
         // set camera position
-        glTranslatef(-tran_x, -tran_y, -8);
+        glTranslatef(-slime.pos.x, -slime.pos.y, -8);
 
         // draw sun
         {
@@ -242,7 +374,7 @@ int main() {
         }
 
         // draw slime
-        { 
+        {
             GLfloat mat_ambient[] = { 0.8, 0.8, 0.8, 1.0 };
             GLfloat mat_diffuse[] = { 0.8, 0.8, 0.8, 1.0 };
             GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
@@ -252,15 +384,20 @@ int main() {
             glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
             glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
             glPushMatrix();
-            glTranslatef(tran_x, tran_y, 0.2);
+            glTranslatef(slime.pos.x, slime.pos.y, 0.2);
             glRotatef(mouse_angle, 0, 0, 1);
             glScalef(0.2, 0.2, 0.2);
-            drawModel(slime);
+            drawModel(slime.model);
             glPopMatrix();
         }
 
+        // draw slime hitsphere
+#if DEBUG
+        drawSphere(slime.pos, slime.hit_radius);
+#endif
+
         // draw map
-        { 
+        {
             GLfloat mat_ambient[] = { 0.8, 0.8, 0.8, 1.0 };
             GLfloat mat_diffuse[] = { 0.8, 0.8, 0.8, 1.0 };
             GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
@@ -271,7 +408,7 @@ int main() {
             glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
             glPushMatrix();
             glScalef(1.0, 1.0, 1.0);
-            drawModel(map);
+            drawModel(map.model);
             glPopMatrix();
         }
 
