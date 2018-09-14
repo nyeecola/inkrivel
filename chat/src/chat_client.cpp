@@ -21,7 +21,7 @@ void *listenServer(void *arg) {
         usleep(10000);
 
         // socket file descriptor
-        int socket_fd = (int) arg;
+        long socket_fd = (long) arg;
 
 #if 0
         // read messages from server
@@ -39,7 +39,7 @@ void *listenServer(void *arg) {
         switch (p.id) {
             case MSG_RCV_MESSAGE:
                 {
-                    int len_sender = strlen(p.body) + 1;
+                    int len_sender = strlen((const char *) p.body) + 1;
                     int len_timestamp = sizeof(uint32_t);
                     int len_message = p.size - len_sender - len_timestamp;
 
@@ -63,7 +63,7 @@ void *listenServer(void *arg) {
                 break;
             case MSG_USERLIST:
                 {
-                    int len_destination = strlen(p.body);
+                    int len_destination = strlen((const char *) p.body);
                     char *destination = (char *) calloc(len_destination + 1, sizeof(*destination));;
                     memcpy(destination, p.body, len_destination);
 
@@ -129,7 +129,7 @@ void chatSendWhisper(int socket_fd, const char *destination, const char *message
 
 int main(int argc, char **argv) {
     // create TCP blocking socket
-    int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+    long socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd < 0) {
         fprintf(stderr, "ERROR: Failed to create TCP socket.\n");
         return -1;

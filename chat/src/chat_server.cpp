@@ -181,7 +181,7 @@ int main(int argc, char **argv) {
                     } break;
                 case MSG_SEND_WHISPER:
                     {
-                        int len_destination = strlen(p.body);
+                        int len_destination = strlen((const char *) p.body);
                         char *destination = (char *) calloc(len_destination + 1, sizeof(*destination));;
                         memcpy(destination, p.body, len_destination);
 
