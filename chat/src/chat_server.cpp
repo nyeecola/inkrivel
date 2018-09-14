@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <assert.h>
 
 #include "chat_types.h"
 

@@ -8,37 +8,12 @@
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <assert.h>
 
 #include "chat_types.h"
 
 #define SERVER_ADDRESS "127.0.0.1"
 #define SERVER_PORT 17555
-
-// TODO: move to header file
-Packet receivePacket(int socket_fd) {
-    Packet p = {};
-
-    int n = 0;
-    while (!n) {
-        n = read(socket_fd, &p.id, 1);
-    }
-    if (n != 1) {
-        assert(false);
-    }
-
-    n = 0;
-    char size_buffer[2];
-    while (n != 2) {
-        int x = read(socket_fd, &size_buffer[n], 2 - n);
-        if (x > 0) {
-            n += x;
-        }
-    }
-    p.size = *((uint16_t *) size_buffer);
-
-    n = 0;
-    //char *body_buffer = (char *) 
-}
 
 void *listenServer(void *arg) {
     for (;;) {
@@ -57,66 +32,53 @@ void *listenServer(void *arg) {
             fflush(stdout);
         }
 #else
-        // read next information on socket if any (non-blocking)
-        byte *buffer = (byte *) calloc(MAX_MESSAGE_SIZE, sizeof(*buffer));;
+        Packet p = receivePacket(socket_fd);
 
-        // TODO: read multiple packets together
+        printf("p.id %d\n", p.id);
 
-        int n = read(socket_fd, buffer, MAX_MESSAGE_SIZE);
-        if (n > 0) {
-            printf("AAA %d\n", n);
+        switch (p.id) {
+            case MSG_RCV_MESSAGE:
+                {
+                    int len_sender = strlen(p.body) + 1;
+                    int len_timestamp = sizeof(uint32_t);
+                    int len_message = p.size - len_sender - len_timestamp;
 
-            Packet p = {};            
-            p.id = buffer[0];
-            p.size = buffer[1] << 8;
-            p.size |= buffer[2];
-            p.body = (byte *) calloc(p.size, sizeof(*p.body));
-            memcpy(p.body, &buffer[3], p.size);
+                    char *sender = (char *) calloc(len_sender, sizeof(*sender));
+                    uint32_t timestamp = ((uint32_t *) p.body)[len_sender];
+                    char *message = (char *) calloc(len_message, sizeof(*message));
 
-            printf("p.id %d\n", p.id);
+                    memcpy(sender, p.body, len_sender);
+                    memcpy(message, p.body + len_sender + len_timestamp, len_message);
 
-            switch (p.id) {
-                case MSG_RCV_MESSAGE:
-                    {
-                        int len_sender = strlen(p.body) + 1;
-                        int len_timestamp = sizeof(uint32_t);
-                        int len_message = p.size - len_sender - len_timestamp;
+                    printf("RCV MESSAGE: %d %d %s %d %s\n", p.id, p.size, sender, timestamp, message);
 
-                        char *sender = (char *) calloc(len_sender, sizeof(*sender));
-                        uint32_t timestamp = ((uint32_t *) p.body)[len_sender];
-                        char *message = (char *) calloc(len_message, sizeof(*message));
+                    free(message);
+                    free(sender);
+                }
+                break;
+            case MSG_RCV_WHISPER:
+                {
+                    printf("SEND MESSAGE: %d %d %s\n", p.id, p.size, p.body);
+                }
+                break;
+            case MSG_USERLIST:
+                {
+                    int len_destination = strlen(p.body);
+                    char *destination = (char *) calloc(len_destination + 1, sizeof(*destination));;
+                    memcpy(destination, p.body, len_destination);
 
-                        memcpy(sender, p.body, len_sender);
-                        memcpy(message, p.body + len_sender + len_timestamp, len_message);
+                    int len_message = p.size - len_destination - 1;
+                    char *message = (char *) calloc(len_message, sizeof(*message));
+                    memcpy(message, p.body + len_destination + 1, len_message);
+                    printf("SEND WHISPER: %d %d %s %s\n", p.id, p.size, destination, message);
 
-                        printf("RCV MESSAGE: %d %d %s %d %s\n", p.id, p.size, sender, timestamp, message);
-
-                        free(message);
-                        free(sender);
-                    } break;
-                case MSG_RCV_WHISPER:
-                    {
-                        printf("SEND MESSAGE: %d %d %s\n", p.id, p.size, p.body);
-                    } break;
-                case MSG_USERLIST:
-                    {
-                        int len_destination = strlen(p.body);
-                        char *destination = (char *) calloc(len_destination + 1, sizeof(*destination));;
-                        memcpy(destination, p.body, len_destination);
-
-                        int len_message = p.size - len_destination - 1;
-                        char *message = (char *) calloc(len_message, sizeof(*message));
-                        memcpy(message, p.body + len_destination + 1, len_message);
-                        printf("SEND WHISPER: %d %d %s %s\n", p.id, p.size, destination, message);
-
-                        free(destination);
-                        free(message);
-                    } break;
-            }
-
-            free(p.body);
+                    free(destination);
+                    free(message);
+                }
+                break;
         }
-        free(buffer);
+
+        free(p.body);
 #endif
     }
 

@@ -40,3 +40,37 @@ void sendPacket(int socket_fd, Packet p) {
     free(buffer);
 }
 
+Packet receivePacket(int socket_fd) {
+    Packet p = {};
+
+    int n = 0;
+    while (!n) {
+        n = read(socket_fd, &p.id, 1);
+    }
+    if (n != 1) {
+        assert(false);
+    }
+
+    n = 0;
+    byte size_buffer[2];
+    while (n != 2) {
+        int x = read(socket_fd, &size_buffer[n], 2 - n);
+        if (x > 0) {
+            n += x;
+        }
+    }
+    p.size = *((uint16_t *) size_buffer);
+
+    n = 0;
+    byte *body_buffer = (byte *) malloc(p.size * sizeof(byte));
+    while (n != p.size) {
+        int x = read(socket_fd, &body_buffer[n], p.size - n);
+        if (x > 0) {
+            n += x;
+        }
+    }
+    p.body = body_buffer;
+
+    return p;
+}
+
