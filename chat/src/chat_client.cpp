@@ -18,23 +18,16 @@
 void *listenServer(void *arg) {
     for (;;) {
         // avoid burning cycles
-        usleep(10000);
+        //usleep(10000);
 
         // socket file descriptor
         long socket_fd = (long) arg;
 
-#if 0
-        // read messages from server
-        char buffer[MAX_MESSAGE_SIZE+1] = {0};
-        int n = read(socket_fd, buffer, MAX_MESSAGE_SIZE);
-        if (n > 0) {
-            fprintf(stdout, "%s", buffer);
-            fflush(stdout);
-        }
-#else
-        Packet p = receivePacket(socket_fd);
+        Packet p;
+        int received = receivePacket(socket_fd, &p);
 
-        printf("p.id %d\n", p.id);
+        // the socket is blocking, so the function must always return 1
+        assert(received); 
 
         switch (p.id) {
             case MSG_RCV_MESSAGE:
@@ -44,7 +37,11 @@ void *listenServer(void *arg) {
                     int len_message = p.size - len_sender - len_timestamp;
 
                     char *sender = (char *) calloc(len_sender, sizeof(*sender));
-                    uint32_t timestamp = ((uint32_t *) p.body)[len_sender];
+                    //uint32_t timestamp = ((uint32_t *) p.body)[len_sender+1];
+                    uint32_t timestamp = p.body[len_sender];
+                    timestamp |= p.body[len_sender+1] << 8;
+                    timestamp |= p.body[len_sender+2] << 16;
+                    timestamp |= p.body[len_sender+3] << 24;
                     char *message = (char *) calloc(len_message, sizeof(*message));
 
                     memcpy(sender, p.body, len_sender);
@@ -79,7 +76,6 @@ void *listenServer(void *arg) {
         }
 
         free(p.body);
-#endif
     }
 
     return NULL;
@@ -157,7 +153,7 @@ int main(int argc, char **argv) {
     }
 
     // change TCP socket to non-blocking mode
-    fcntl(socket_fd, F_SETFL, O_NONBLOCK);
+    //fcntl(socket_fd, F_SETFL, O_NONBLOCK);
 
     pthread_t listener;
     pthread_create(&listener, NULL, listenServer, (void *) socket_fd);

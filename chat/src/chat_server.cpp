@@ -8,11 +8,13 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <assert.h>
+#include <poll.h>
 
 #include "chat_types.h"
 
 #define SERVER_PORT 17555
 #define MAX_PENDING_CONNECTIONS 5
+#define MAX_CONNECTIONS 500
 
 void chatSendBackMessage(int socket_fd, const char *sender, uint32_t timestamp, const char *message) {
     int len_sender = strlen(sender) + 1;
@@ -85,8 +87,8 @@ int main(int argc, char **argv) {
     fprintf(stdout, "Listening...\n");
     
     // TODO: stop using this, figure out a better way or use linked lists instead
-    int sockets[500];
-    memset(sockets, -1, sizeof(sockets));
+    //int sockets[500];
+    //memset(sockets, -1, sizeof(sockets));
 
     // next socket
     int next_socket_fd;
@@ -94,7 +96,12 @@ int main(int argc, char **argv) {
 
     for (;;) {
         // avoid wasting cycles
-        usleep(10000);
+        //usleep(10000);
+
+        struct poll_fd sockets_to_poll[MAX_CONNECTIONS];
+        memset(sockets_to_poll, 
+
+        poll();
 
         // accept incoming connection (non-blocking)
         struct sockaddr_in client_address;
@@ -126,21 +133,10 @@ int main(int argc, char **argv) {
         for (int i = 0; i <= last_socket_fd_id; i++) {
             if (sockets[i] == -1) continue; // TODO: stop doing this, fix sockets list
 
-            // read next information on socket if any (non-blocking)
-            byte *buffer = (byte *) calloc(MAX_MESSAGE_SIZE, sizeof(*buffer));;
-
-            // TODO: read multiple packets together
-
-            int n = read(sockets[i], buffer, MAX_MESSAGE_SIZE);
-            if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
-                fprintf(stderr, "ERROR: Something went wrong when reading from socket %d.\n", sockets[i]);
-                free(buffer);
-                continue;
-            }
-
-            // skip sockets with no message
-            if (n <= 0) {
-                free(buffer);
+            // TODO: maybe read multiple packets together
+            Packet p;
+            int received = receivePacket(sockets[i], &p);
+            if (!received) {
                 continue;
             }
 
@@ -162,13 +158,6 @@ int main(int argc, char **argv) {
                 }
             }
 #else
-            Packet p = {};            
-            p.id = buffer[0];
-            p.size = buffer[1] << 8;
-            p.size |= buffer[2];
-            p.body = (byte *) calloc(p.size, sizeof(*p.body));
-            memcpy(p.body, &buffer[3], p.size);
-
             switch (p.id) {
                 case MSG_CONNECT:
                     {
@@ -196,7 +185,6 @@ int main(int argc, char **argv) {
             }
 
             free(p.body);
-            free(buffer);
 #endif
         }
     }

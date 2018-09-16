@@ -27,7 +27,7 @@ void sendPacket(int socket_fd, Packet p) {
     buffer[2] = (byte) ((p.size << 8) >> 8);
     memcpy(&buffer[3], p.body, p.size);
 
-    printf("%d %d %s\n", buffer[0], (buffer[1] << 8) | buffer[2], &buffer[3]);
+    //printf("%d %d %s\n", buffer[0], (buffer[1] << 8) | buffer[2], &buffer[3]);
 
     int n = write(socket_fd, buffer, p.size + 3);
 
@@ -40,15 +40,11 @@ void sendPacket(int socket_fd, Packet p) {
     free(buffer);
 }
 
-Packet receivePacket(int socket_fd) {
-    Packet p = {};
-
-    int n = 0;
-    while (!n) {
-        n = read(socket_fd, &p.id, 1);
-    }
+// TODO: caller must remember to free body_buffer
+int receivePacket(int socket_fd, Packet *p) {
+    int n = read(socket_fd, &p->id, 1);
     if (n != 1) {
-        assert(false);
+        return 0;
     }
 
     n = 0;
@@ -58,19 +54,22 @@ Packet receivePacket(int socket_fd) {
         if (x > 0) {
             n += x;
         }
+        assert(x >= 0 || errno == EAGAIN || errno == EWOULDBLOCK);
     }
-    p.size = *((uint16_t *) size_buffer);
+    p->size = size_buffer[0] << 8;
+    p->size |= size_buffer[1];
 
     n = 0;
-    byte *body_buffer = (byte *) malloc(p.size * sizeof(byte));
-    while (n != p.size) {
-        int x = read(socket_fd, &body_buffer[n], p.size - n);
+    byte *body_buffer = (byte *) malloc(p->size * sizeof(byte));
+    while (n != p->size) {
+        int x = read(socket_fd, &body_buffer[n], p->size - n);
         if (x > 0) {
             n += x;
         }
+        assert(x >= 0 || errno == EAGAIN || errno == EWOULDBLOCK);
     }
-    p.body = body_buffer;
+    p->body = body_buffer;
 
-    return p;
+    return 1;
 }
 
