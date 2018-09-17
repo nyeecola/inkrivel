@@ -17,9 +17,6 @@
 
 void *listenServer(void *arg) {
     for (;;) {
-        // avoid burning cycles
-        //usleep(10000);
-
         // socket file descriptor
         long socket_fd = (long) arg;
 
@@ -47,7 +44,8 @@ void *listenServer(void *arg) {
                     memcpy(sender, p.body, len_sender);
                     memcpy(message, p.body + len_sender + len_timestamp, len_message);
 
-                    printf("RCV MESSAGE: %d %d %s %d %s\n", p.id, p.size, sender, timestamp, message);
+                    printf("RCV MESSAGE: %d %d %s %d %s\n", p.id, p.size, sender,
+                                                            timestamp, message);
 
                     free(message);
                     free(sender);
@@ -55,19 +53,21 @@ void *listenServer(void *arg) {
                 break;
             case MSG_RCV_WHISPER:
                 {
-                    printf("SEND MESSAGE: %d %d %s\n", p.id, p.size, p.body);
+                    printf("RCV WHISPER: %d %d %s\n", p.id, p.size, p.body);
                 }
                 break;
             case MSG_USERLIST:
                 {
                     int len_destination = strlen((const char *) p.body);
-                    char *destination = (char *) calloc(len_destination + 1, sizeof(*destination));;
+                    char *destination = (char *) calloc(len_destination + 1,
+                                                        sizeof(*destination));
                     memcpy(destination, p.body, len_destination);
 
                     int len_message = p.size - len_destination - 1;
                     char *message = (char *) calloc(len_message, sizeof(*message));
                     memcpy(message, p.body + len_destination + 1, len_message);
-                    printf("SEND WHISPER: %d %d %s %s\n", p.id, p.size, destination, message);
+                    printf("SEND WHISPER: %d %d %s %s\n", p.id, p.size, destination,
+                                                          message);
 
                     free(destination);
                     free(message);
