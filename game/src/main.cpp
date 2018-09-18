@@ -295,6 +295,7 @@ int main() {
         }
 
         // collision
+        Vector next_pos = slime.pos + slime.dir;
         Vector max_z = {0, 0, -200};
         for (int i = 0; i < map.model.num_faces; i++) {
             Face *cur = &map.model.faces[i];
@@ -318,10 +319,10 @@ int main() {
             float angle = acos(cosine) * 180 / M_PI;
 
             // Sphere-Triangle collision from: http://realtimecollisiondetection.net/blog/?p=103
-            if (angle > 60 && (vertex0.z > slime.pos.z || vertex1.z > slime.pos.z || vertex2.z > slime.pos.z)) {
-                Vector A = vertex0 - slime.pos;
-                Vector B = vertex1 - slime.pos;
-                Vector C = vertex2 - slime.pos;
+            if (angle > 60 && (vertex0.z > next_pos.z || vertex1.z > next_pos.z || vertex2.z > next_pos.z)) {
+                Vector A = vertex0 - next_pos;
+                Vector B = vertex1 - next_pos;
+                Vector C = vertex2 - next_pos;
                 float rr = slime.hit_radius * slime.hit_radius;
                 Vector V = (B - A).cross(C - A);
                 float d = A.dot(V);
@@ -365,7 +366,7 @@ int main() {
 
                 bool separated = sep1 || sep2 || sep3 || sep4 || sep5 || sep6 || sep7;
 
-                if (!separated && slime.dir.dot(normal) > 0) {
+                if (!separated) {
                     normal.z = 0;
                     normal.normalize();
                     normal *= slime.speed * normal.dot(slime.dir) / (normal.len()*slime.dir.len());
@@ -374,13 +375,21 @@ int main() {
                 }
             }
             else {
-                Vector sky = {slime.pos.x, slime.pos.y, 200};
+                Vector sky[4];
+                sky[0] = {slime.pos.x + slime.hit_radius, slime.pos.y, 200};
+                sky[1] = {slime.pos.x - slime.hit_radius, slime.pos.y, 200};
+                sky[2] = {slime.pos.x, slime.pos.y + slime.hit_radius, 200};
+                sky[3] = {slime.pos.x, slime.pos.y - slime.hit_radius, 200};
+
                 Vector ground = {0, 0, -1};
 
-                Vector intersect;
-                if (rayIntersectsTriangle(map, sky, ground, cur, intersect)) {
-                    if (max_z.z < intersect.z) {
-                        max_z = intersect;
+                Vector intersect_v;
+                for (int j = 0; j < 4; j++) {
+                    bool intersect = rayIntersectsTriangle(map, sky[j], ground, cur, intersect_v);
+                    if (intersect) {
+                        if (max_z.z < intersect_v.z) {
+                            max_z = intersect_v;
+                        }
                     }
                 }
             }
@@ -392,7 +401,9 @@ int main() {
             slime.dir *= slime.speed;
         }
         slime.pos += slime.dir;
-        slime.pos.z = max_z.z + 0.02;
+        if (max_z.z > 0) {
+            slime.pos.z = max_z.z;
+        }
 
         // render
 
