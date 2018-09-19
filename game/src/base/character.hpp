@@ -12,6 +12,7 @@ public:
     Vector pos;
     float speed;
     Vector dir;
+    Quat rotation;
 
     //int damage;
     //float range;

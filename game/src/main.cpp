@@ -211,6 +211,18 @@ bool rayIntersectsTriangle(Map map, Vector rayOrigin, Vector rayVector, Face* in
         return false;
 }
 
+Quat getRotationQuat(const Vector& from, const Vector& to) {     
+     Quat result;     
+     Vector H = from + to;     
+     H.normalize();     
+
+     result.w = from.dot(H);     
+     result.x = from.y*H.z - from.z*H.y;     
+     result.y = from.z*H.x - from.x*H.z;     
+     result.z = from.x*H.y - from.y*H.x;     
+     return result;
+}
+
 int main() {
     loadLibraries();
 
@@ -367,11 +379,13 @@ int main() {
                 bool separated = sep1 || sep2 || sep3 || sep4 || sep5 || sep6 || sep7;
 
                 if (!separated) {
-                    normal.z = 0;
-                    normal.normalize();
-                    normal *= slime.speed * normal.dot(slime.dir) / (normal.len()*slime.dir.len());
+                    Vector slide = normal;
+                    slide.z = 0;
+                    slide.normalize();
+                    slide *= slime.speed * slide.dot(slime.dir) / (slide.len()*slime.dir.len());
 
-                    slime.dir -= normal;
+                    slime.dir -= slide;
+                    slime.dir = {0,0,0};
                 }
             }
             else {
@@ -380,6 +394,8 @@ int main() {
                 sky[1] = {slime.pos.x - slime.hit_radius, slime.pos.y, 200};
                 sky[2] = {slime.pos.x, slime.pos.y + slime.hit_radius, 200};
                 sky[3] = {slime.pos.x, slime.pos.y - slime.hit_radius, 200};
+
+                Vector cur_slime_pos = {slime.pos.x, slime.pos.y, 200};
 
                 Vector ground = {0, 0, -1};
 
@@ -391,6 +407,10 @@ int main() {
                             max_z = intersect_v;
                         }
                     }
+                }
+                bool intersect = rayIntersectsTriangle(map, cur_slime_pos, ground, cur, intersect_v);
+                if (intersect) {
+                    slime.rotation = getRotationQuat({0,0,1}, normal);
                 }
             }
         }
@@ -445,6 +465,7 @@ int main() {
             glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
             glPushMatrix();
             glTranslatef(slime.pos.x, slime.pos.y, slime.pos.z);
+            glRotatef((2*acos(slime.rotation.w)) * 180 / M_PI, slime.rotation.x, slime.rotation.y, slime.rotation.z);
             glRotatef(mouse_angle, 0, 0, 1);
             glScalef(0.2, 0.2, 0.2);
             drawModel(slime.model);
