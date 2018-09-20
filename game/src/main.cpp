@@ -180,9 +180,9 @@ void drawSphere(Vector center, float radius) {
 
 // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
 bool rayIntersectsTriangle(Map map, Vector rayOrigin, Vector rayVector, Face* inTriangle, Vector& outIntersectionPoint) {
-    const float EPSILON = 0.0000001; 
+    const float EPSILON = 0.0000001;
     Vector vertex0 = map.scale * map.model.vertices[inTriangle->vertices[0]];
-    Vector vertex1 = map.scale * map.model.vertices[inTriangle->vertices[1]];  
+    Vector vertex1 = map.scale * map.model.vertices[inTriangle->vertices[1]];
     Vector vertex2 = map.scale * map.model.vertices[inTriangle->vertices[2]];
     Vector edge1, edge2, h, s, q;
     float a,f,u,v;
@@ -204,22 +204,74 @@ bool rayIntersectsTriangle(Map map, Vector rayOrigin, Vector rayVector, Face* in
     // At this stage we can compute t to find out where the intersection point is on the line.
     float t = f * edge2.dot(q);
     if (t > EPSILON) { // ray intersection
-        outIntersectionPoint = rayOrigin + rayVector * t; 
+        outIntersectionPoint = rayOrigin + rayVector * t;
         return true;
     }
     else // This means that there is a line intersection but not a ray intersection.
         return false;
 }
 
-Quat getRotationQuat(const Vector& from, const Vector& to) {     
-     Quat result;     
-     Vector H = from + to;     
-     H.normalize();     
+// Sphere-Triangle collision from: http://realtimecollisiondetection.net/blog/?p=103
+bool sphereCollidesTriangle(Vector sphere_center, float sphere_radius, Vector triangle0, Vector triangle1, Vector triangle2) {
+    Vector A = triangle0 - sphere_center;
+    Vector B = triangle1 - sphere_center;
+    Vector C = triangle2 - sphere_center;
+    float rr = sphere_radius * sphere_radius;
+    Vector V = (B - A).cross(C - A);
+    float d = A.dot(V);
+    float e = V.dot(V);
 
-     result.w = from.dot(H);     
-     result.x = from.y*H.z - from.z*H.y;     
-     result.y = from.z*H.x - from.x*H.z;     
-     result.z = from.x*H.y - from.y*H.x;     
+    bool sep1 = d*d > rr*e;
+
+    float aa = A.dot(A);
+    float ab = A.dot(B);
+    float ac = A.dot(C);
+    float bb = B.dot(B);
+    float bc = B.dot(C);
+    float cc = C.dot(C);
+
+    bool sep2 = (aa > rr) && (ab > aa) && (ac > aa);
+    bool sep3 = (bb > rr) && (ab > bb) && (bc > bb);
+    bool sep4 = (cc > rr) && (ac > cc) && (bc > cc);
+
+    Vector AB = B - A;
+    Vector BC = C - B;
+    Vector CA = A - C;
+
+    float d1 = ab - aa;
+    float d2 = bc - bb;
+    float d3 = ac - cc;
+
+    float e1 = AB.dot(AB);
+    float e2 = BC.dot(BC);
+    float e3 = CA.dot(CA);
+
+    Vector Q1 = A*e1 - d1*AB;
+    Vector Q2 = B*e2 - d2*BC;
+    Vector Q3 = C*e3 - d3*CA;
+    Vector QC = C*e1 - Q1;
+    Vector QA = A*e2 - Q2;
+    Vector QB = B*e3 - Q3;
+
+    bool sep5 = (Q1.dot(Q1) > rr * e1 * e1) && (Q1.dot(QC) > 0);
+    bool sep6 = (Q2.dot(Q2) > rr * e2 * e2) && (Q2.dot(QA) > 0);
+    bool sep7 = (Q3.dot(Q3) > rr * e3 * e3) && (Q3.dot(QB) > 0);
+
+    bool separated = sep1 || sep2 || sep3 || sep4 || sep5 || sep6 || sep7;
+
+    return !separated;
+}
+
+// https://www.gamedev.net/forums/topic/566295-normal-to-a-quaternion/
+Quat getRotationQuat(const Vector& from, const Vector& to) {
+     Quat result;
+     Vector H = from + to;
+     H.normalize();
+
+     result.w = from.dot(H);
+     result.x = from.y*H.z - from.z*H.y;
+     result.y = from.z*H.x - from.x*H.z;
+     result.z = from.x*H.y - from.y*H.x;
      return result;
 }
 
@@ -330,62 +382,15 @@ int main() {
 
             float angle = acos(cosine) * 180 / M_PI;
 
-            // Sphere-Triangle collision from: http://realtimecollisiondetection.net/blog/?p=103
             if (angle > 60 && (vertex0.z > next_pos.z || vertex1.z > next_pos.z || vertex2.z > next_pos.z)) {
-                Vector A = vertex0 - next_pos;
-                Vector B = vertex1 - next_pos;
-                Vector C = vertex2 - next_pos;
-                float rr = slime.hit_radius * slime.hit_radius;
-                Vector V = (B - A).cross(C - A);
-                float d = A.dot(V);
-                float e = V.dot(V);
+                bool collides = sphereCollidesTriangle(next_pos, slime.hit_radius, vertex0, vertex1, vertex2);
 
-                bool sep1 = d*d > rr*e;
+                if (collides) {
+                    Vector v = slime.pos - vertex0;
+                    float d = v.dot(normal);
+                    Vector collision = d*normal;
 
-                float aa = A.dot(A);
-                float ab = A.dot(B);
-                float ac = A.dot(C);
-                float bb = B.dot(B);
-                float bc = B.dot(C);
-                float cc = C.dot(C);
-
-                bool sep2 = (aa > rr) && (ab > aa) && (ac > aa);
-                bool sep3 = (bb > rr) && (ab > bb) && (bc > bb);
-                bool sep4 = (cc > rr) && (ac > cc) && (bc > cc);
-
-                Vector AB = B - A;
-                Vector BC = C - B;
-                Vector CA = A - C;
-
-                float d1 = ab - aa;
-                float d2 = bc - bb;
-                float d3 = ac - cc;
-
-                float e1 = AB.dot(AB);
-                float e2 = BC.dot(BC);
-                float e3 = CA.dot(CA);
-
-                Vector Q1 = A*e1 - d1*AB;
-                Vector Q2 = B*e2 - d2*BC;
-                Vector Q3 = C*e3 - d3*CA;
-                Vector QC = C*e1 - Q1;
-                Vector QA = A*e2 - Q2;
-                Vector QB = B*e3 - Q3;
-
-                bool sep5 = (Q1.dot(Q1) > rr * e1 * e1) && (Q1.dot(QC) > 0);
-                bool sep6 = (Q2.dot(Q2) > rr * e2 * e2) && (Q2.dot(QA) > 0);
-                bool sep7 = (Q3.dot(Q3) > rr * e3 * e3) && (Q3.dot(QB) > 0);
-
-                bool separated = sep1 || sep2 || sep3 || sep4 || sep5 || sep6 || sep7;
-
-                if (!separated) {
-                    Vector slide = normal;
-                    slide.z = 0;
-                    slide.normalize();
-                    slide *= slime.speed * slide.dot(slime.dir) / (slide.len()*slime.dir.len());
-
-                    slime.dir -= slide;
-                    slime.dir = {0,0,0};
+                    slime.dir = collision;
                 }
             }
             else {
@@ -422,7 +427,7 @@ int main() {
         }
         slime.pos += slime.dir;
         if (max_z.z > 0) {
-            slime.pos.z = max_z.z;
+            slime.pos.z += 0.5*(max_z.z - slime.pos.z);
         }
 
         // render
@@ -465,6 +470,7 @@ int main() {
             glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
             glPushMatrix();
             glTranslatef(slime.pos.x, slime.pos.y, slime.pos.z);
+            // From AllegroGL`s math.c
             glRotatef((2*acos(slime.rotation.w)) * 180 / M_PI, slime.rotation.x, slime.rotation.y, slime.rotation.z);
             glRotatef(mouse_angle, 0, 0, 1);
             glScalef(0.2, 0.2, 0.2);
