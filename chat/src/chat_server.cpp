@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -113,6 +114,7 @@ int getUserIndexBySocket(int socket_fd) {
             return i;
         }
     }
+    assert(false);
     return -1;
 }
 
@@ -122,6 +124,7 @@ int getUserIndexByName(char name[20]) {
             return i;
         }
     }
+    assert(false);
     return -1;
 }
 
@@ -168,6 +171,12 @@ void handleNewMessage(int *index, pollfd *sockets_to_poll, int *size) {
             } break;
         case MSG_SEND_MESSAGE:
             {
+                for (int i = 0; i < global_connected_users_size; i++) {
+                    chatSendBackMessage(global_connected_users[i].socket_fd,
+                            global_connected_users[getUserIndexBySocket(socket_fd)].name,
+                            time(NULL),
+                            (const char*) p.body);
+                }
                 printf("SEND MESSAGE: %d %d %s\n", p.id, p.size, p.body);
             } break;
         case MSG_SEND_WHISPER:
@@ -182,7 +191,11 @@ void handleNewMessage(int *index, pollfd *sockets_to_poll, int *size) {
                 memcpy(message, p.body + len_destination + 1, len_message);
                 printf("SEND WHISPER: %d %d %s %s\n", p.id, p.size, destination, message);
 
-                chatSendBackWhisper(socket_fd, "Juca", 44444, "Sou do bem!");
+                int send_socket = global_connected_users[getUserIndexByName(destination)].socket_fd;
+                chatSendBackWhisper(send_socket,
+                        global_connected_users[getUserIndexBySocket(socket_fd)].name,
+                        time(NULL),
+                        message);
 
                 free(destination);
                 free(message);
