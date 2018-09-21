@@ -16,6 +16,14 @@
 #define MAX_PENDING_CONNECTIONS 32
 #define MAX_CONNECTIONS 500
 
+struct User {
+    char name[20];
+    int socket_fd;
+};
+
+User global_connected_users[MAX_CONNECTIONS];
+int global_connected_users_size = 0;
+
 void chatSendBackMessage(int socket_fd, const char *sender, uint32_t timestamp,
                          const char *message) {
     int len_sender = strlen(sender) + 1;
@@ -55,8 +63,23 @@ void chatSendBackWhisper(int socket_fd, const char *sender, uint32_t timestamp,
     free(p.body);
 }
 
-void chatSendUserList(int socket_fd, const char *userlist) {
-    // TODO
+void chatSendUserList(int socket_fd) {
+    Packet p;
+    p.id = MSG_USERLIST;
+    p.body = (byte*) calloc(500*20, sizeof(byte));
+
+    int offset = 0;
+    for (int i = 0; i < global_connected_users_size; i++) {
+        int len = strlen(global_connected_users[i].name) +1;
+        memcpy(p.body + offset, global_connected_users[i].name, len);
+        offset += len;
+    }
+
+    p.size = offset;
+
+    sendPacket(socket_fd, p);
+
+    free(p.body);
 }
 
 int handleNewConnection(int socket_fd, pollfd *new_connection) {
@@ -84,6 +107,24 @@ int handleNewConnection(int socket_fd, pollfd *new_connection) {
     return 1;
 }
 
+int getUserIndexBySocket(int socket_fd) {
+    for (int i = 0; i < global_connected_users_size; i++) {
+        if (socket_fd == global_connected_users[i].socket_fd) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int getUserIndexByName(char name[20]) {
+    for (int i = 0; i < global_connected_users_size; i++) {
+        if (!strcmp(name, global_connected_users[i].name)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 void handleNewMessage(int *index, pollfd *sockets_to_poll, int *size) {
     int socket_fd = sockets_to_poll[*index].fd;
 
@@ -101,6 +142,12 @@ void handleNewMessage(int *index, pollfd *sockets_to_poll, int *size) {
         *size -= 1;
         *index -= 1;
         puts("Connection closed.");
+
+        int user_index = getUserIndexBySocket(socket_fd);
+        for (int j = user_index; j < global_connected_users_size-1; j++) {
+            global_connected_users[j] = global_connected_users[j+1];
+        }
+        global_connected_users_size--;
         return;
     }
 
@@ -108,7 +155,16 @@ void handleNewMessage(int *index, pollfd *sockets_to_poll, int *size) {
         case MSG_CONNECT:
             {
                 printf("CONNECT: %d %d %s\n", p.id, p.size, p.body);
-                chatSendBackMessage(socket_fd, "Server", 321941092, "Connected.");
+                User temp = {"", socket_fd};
+                global_connected_users[global_connected_users_size] = temp;
+                strcpy(global_connected_users[global_connected_users_size].name,
+                        (const char *) p.body);
+                global_connected_users_size++;
+                
+                for (int i = 0; i < global_connected_users_size; i++) {
+                    chatSendUserList(global_connected_users[i].socket_fd);
+                }
+                //chatSendBackMessage(socket_fd, "Server", 321941092, "Connected.");
             } break;
         case MSG_SEND_MESSAGE:
             {

@@ -53,24 +53,45 @@ void *listenServer(void *arg) {
                 break;
             case MSG_RCV_WHISPER:
                 {
-                    printf("RCV WHISPER: %d %d %s\n", p.id, p.size, p.body);
+                    int len_sender = strlen((const char *) p.body) + 1;
+                    int len_timestamp = sizeof(uint32_t);
+                    int len_message = p.size - len_sender - len_timestamp;
+
+                    char *sender = (char *) calloc(len_sender, sizeof(*sender));
+                    //uint32_t timestamp = ((uint32_t *) p.body)[len_sender+1];
+                    uint32_t timestamp = p.body[len_sender];
+                    timestamp |= p.body[len_sender+1] << 8;
+                    timestamp |= p.body[len_sender+2] << 16;
+                    timestamp |= p.body[len_sender+3] << 24;
+                    char *message = (char *) calloc(len_message, sizeof(*message));
+
+                    memcpy(sender, p.body, len_sender);
+                    memcpy(message, p.body + len_sender + len_timestamp, len_message);
+
+                    printf("RCV WHISPER: %d %d %s %d %s\n", p.id, p.size, sender,
+                                                            timestamp, message);
+
+                    free(message);
+                    free(sender);
                 }
                 break;
             case MSG_USERLIST:
                 {
-                    int len_destination = strlen((const char *) p.body);
-                    char *destination = (char *) calloc(len_destination + 1,
-                                                        sizeof(*destination));
-                    memcpy(destination, p.body, len_destination);
+                    char connected_users[500][20];
+                    int connected_users_size = 0;
 
-                    int len_message = p.size - len_destination - 1;
-                    char *message = (char *) calloc(len_message, sizeof(*message));
-                    memcpy(message, p.body + len_destination + 1, len_message);
-                    printf("SEND WHISPER: %d %d %s %s\n", p.id, p.size, destination,
-                                                          message);
+                    int offset = 0;
+                    while (1) {
+                        int len = strlen((const char *) p.body + offset) +1;
+                        memcpy(connected_users[connected_users_size++], p.body + offset, len);
+                        offset += len;
 
-                    free(destination);
-                    free(message);
+                        if (offset >= p.size) break;
+                    }
+
+                    for (int i = 0; i < connected_users_size; i++) {
+                        printf("%s\n", connected_users[i]);
+                    }
                 }
                 break;
         }
@@ -180,6 +201,10 @@ int main(int argc, char **argv) {
         usleep(1000000);
         chatSendWhisper(socket_fd, "Andreza", "oi");
         usleep(1000000);
+
+        while (1) {
+        usleep(1000000);
+        }
 #endif
 
     return 0;
