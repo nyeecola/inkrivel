@@ -361,6 +361,8 @@ int main() {
         // collision
         Vector next_pos = slime.pos + slime.dir;
         Vector max_z = {0, 0, -200};
+        Vector rotation_points[4] = {{-200, -200, -200}, {-200, -200, -200}, {-200, -200, -200}, {-200, -200, -200}};
+        Vector rotation_normals[4] = {{-200, -200, -200}, {-200, -200, -200}, {-200, -200, -200}, {-200, -200, -200}};
         for (int i = 0; i < map.model.num_faces; i++) {
             Face *cur = &map.model.faces[i];
 
@@ -390,7 +392,10 @@ int main() {
                     float d = v.dot(normal);
                     Vector collision = d*normal;
 
-                    slime.dir = collision;
+                    Vector reaction_v = slime.dir + collision;
+                    slime.dir.x = reaction_v.x * slime.dir.x > 0 ? reaction_v.x : 0;
+                    slime.dir.y = reaction_v.y * slime.dir.y > 0 ? reaction_v.y : 0;
+                    slime.dir.z = reaction_v.z * slime.dir.z > 0 ? reaction_v.z : 0;
                 }
             }
             else {
@@ -399,8 +404,6 @@ int main() {
                 sky[1] = {slime.pos.x - slime.hit_radius, slime.pos.y, 200};
                 sky[2] = {slime.pos.x, slime.pos.y + slime.hit_radius, 200};
                 sky[3] = {slime.pos.x, slime.pos.y - slime.hit_radius, 200};
-
-                Vector cur_slime_pos = {slime.pos.x, slime.pos.y, 200};
 
                 Vector ground = {0, 0, -1};
 
@@ -411,14 +414,22 @@ int main() {
                         if (max_z.z < intersect_v.z) {
                             max_z = intersect_v;
                         }
+
+                        if (rotation_points[j].z < intersect_v.z) {
+                            rotation_points[j] = intersect_v;
+                            rotation_normals[j] = normal;
+                        }
                     }
-                }
-                bool intersect = rayIntersectsTriangle(map, cur_slime_pos, ground, cur, intersect_v);
-                if (intersect) {
-                    slime.rotation = getRotationQuat({0,0,1}, normal);
                 }
             }
         }
+
+        Vector normal_sum = {0,0,0};
+        for (int j = 0; j < 4; j++) {
+            normal_sum += rotation_normals[j];
+        }
+        normal_sum.normalize();
+        slime.rotation = getRotationQuat({0,0,1}, normal_sum);
 
         // Slime movement
         if (slime.dir.len() > slime.speed) {
@@ -458,26 +469,6 @@ int main() {
             //glLighti(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 1);
         }
 
-        // draw slime
-        {
-            GLfloat mat_ambient[] = { 0.8, 0.8, 0.8, 1.0 };
-            GLfloat mat_diffuse[] = { 0.8, 0.8, 0.8, 1.0 };
-            GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
-            GLfloat mat_shininess[] = { 1.0 };
-            glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, mat_ambient);
-            glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_diffuse);
-            glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
-            glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
-            glPushMatrix();
-            glTranslatef(slime.pos.x, slime.pos.y, slime.pos.z);
-            // From AllegroGL`s math.c
-            glRotatef((2*acos(slime.rotation.w)) * 180 / M_PI, slime.rotation.x, slime.rotation.y, slime.rotation.z);
-            glRotatef(mouse_angle, 0, 0, 1);
-            glScalef(0.2, 0.2, 0.2);
-            drawModel(slime.model);
-            glPopMatrix();
-        }
-
         // draw slime hitsphere
 #if DEBUG
         drawSphere(slime.pos, slime.hit_radius);
@@ -496,6 +487,27 @@ int main() {
             glPushMatrix();
             glScalef(map.scale, map.scale, map.scale);
             drawModel(map.model);
+            glPopMatrix();
+        }
+
+        glClear(GL_DEPTH_BUFFER_BIT);
+        // draw slime
+        {
+            GLfloat mat_ambient[] = { 0.8, 0.8, 0.8, 1.0 };
+            GLfloat mat_diffuse[] = { 0.8, 0.8, 0.8, 1.0 };
+            GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
+            GLfloat mat_shininess[] = { 1.0 };
+            glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, mat_ambient);
+            glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_diffuse);
+            glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
+            glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
+            glPushMatrix();
+            glTranslatef(slime.pos.x, slime.pos.y, slime.pos.z);
+            // From AllegroGL`s math.c
+            glRotatef((2*acos(slime.rotation.w)) * 180 / M_PI, slime.rotation.x, slime.rotation.y, slime.rotation.z);
+            glRotatef(mouse_angle, 0, 0, 1);
+            glScalef(0.2, 0.2, 0.2);
+            drawModel(slime.model);
             glPopMatrix();
         }
 
