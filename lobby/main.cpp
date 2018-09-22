@@ -25,6 +25,9 @@ static void GlfwErrorCallback(int error, const char* description) {
 volatile char global_message_history[1000][MAX_MSG_LEN];
 volatile int global_message_history_size = 0;
 
+volatile char global_connected_users[500][20];
+volatile int global_connected_users_size = 0;
+
 void *listenServer(void *arg) {
     for (;;) {
         // socket file descriptor
@@ -92,20 +95,18 @@ void *listenServer(void *arg) {
                 break;
             case MSG_USERLIST:
                 {
-                    char connected_users[500][20];
-                    int connected_users_size = 0;
-
+                    global_connected_users_size = 0;
                     int offset = 0;
                     while (1) {
                         int len = strlen((const char *) p.body + offset) +1;
-                        memcpy(connected_users[connected_users_size++], p.body + offset, len);
+                        memcpy((void*) global_connected_users[global_connected_users_size++], p.body + offset, len);
                         offset += len;
 
                         if (offset >= p.size) break;
                     }
 
-                    for (int i = 0; i < connected_users_size; i++) {
-                        printf("%s\n", connected_users[i]);
+                    for (int i = 0; i < global_connected_users_size; i++) {
+                        printf("%s\n", global_connected_users[i]);
                     }
                 }
                 break;
@@ -172,6 +173,10 @@ int main(int argc, char **argv) {
 
     bool logged = false;
     while (!glfwWindowShouldClose(window)) {
+        if (global_message_history_size == 1000) {
+            memcpy((void*) global_message_history, (const void*) (global_message_history + (500*MAX_MSG_LEN)), 500*MAX_MSG_LEN);
+            global_message_history_size = 500;
+        }
         // start of frame
         {
             // Poll and handle events (inputs, window resize, etc.)
@@ -268,6 +273,16 @@ int main(int argc, char **argv) {
                     ImGui::Separator();
 
                     if (ImGui::Button("Play", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+                    }
+                }
+                ImGui::End();
+            }
+            {
+                ImGui::SetNextWindowSize(ImVec2(100, 0));
+                ImGui::Begin("Online");
+                {
+                    for (int j = 0; j < global_connected_users_size; j++) {
+                        ImGui::Text("%s", global_connected_users[j]);
                     }
                 }
                 ImGui::End();

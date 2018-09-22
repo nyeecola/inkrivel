@@ -151,6 +151,10 @@ void handleNewMessage(int *index, pollfd *sockets_to_poll, int *size) {
             global_connected_users[j] = global_connected_users[j+1];
         }
         global_connected_users_size--;
+
+        for (int i = 0; i < global_connected_users_size; i++) {
+            chatSendUserList(global_connected_users[i].socket_fd);
+        }
         return;
     }
 
