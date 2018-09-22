@@ -252,11 +252,12 @@ int main(int argc, char **argv) {
                             chatSendWhisper(socket_fd, (const char*) global_connected_users[selectedName], buffer);
 
                             struct tm lt;
-                            localtime_r((const long*) &time(NULL), &lt);
+                            const long cur_time = time(NULL);
+                            localtime_r(&cur_time, &lt);
                             char formated_time[10];
                             strftime(formated_time, sizeof(formated_time), "%T", &lt);
                             sprintf((char*) global_message_history[global_message_history_size++],
-                                    "%s to <%s>: %s\n", formated_time, global_connected_users[selectedName], message);
+                                    "%s to <%s>: %s\n", formated_time, global_connected_users[selectedName], buffer);
                         }
                         memset(buffer, 0, sizeof(buffer));
                         ImGui::SetKeyboardFocusHere(-1);
