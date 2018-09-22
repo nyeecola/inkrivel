@@ -42,6 +42,7 @@ public:
     TextureCoord *texture_coords;
     int num_texture_coords;
     GLuint texture_id;
+    SDL_Surface *texture_image;
 };
 
 enum FaceType {

@@ -56,7 +56,7 @@ Model loadWavefrontModel(const char *obj_filename, const char *texture_filename,
     model.texture_coords = (TextureCoord *) malloc(100000 * sizeof(TextureCoord));
 
     if (face_type == VERTEX_ALL || face_type == VERTEX_TEXTURE) {
-        // TODO: do we need to free this?
+        // TODO: do we need to free this? For the map be careful, because we need the pointer
         SDL_Surface *sur = IMG_Load(texture_filename);
         assert(sur);
         glGenTextures(1, &model.texture_id);
@@ -65,9 +65,10 @@ Model loadWavefrontModel(const char *obj_filename, const char *texture_filename,
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexImage2D(GL_TEXTURE_2D, 0, 4, 1024, 1024, 0, GL_RGBA, GL_UNSIGNED_BYTE, sur->pixels);
         glBindTexture(GL_TEXTURE_2D, 0);
+
+        model.texture_image = sur;
     }
 
-    puts("aaa");
     FILE *f = fopen(obj_filename, "r");
     char type[40] = {};
     while ((fscanf(f, " %s", type)) != EOF) {
@@ -110,7 +111,7 @@ Model loadWavefrontModel(const char *obj_filename, const char *texture_filename,
             model.faces[model.num_faces++] = face;
         }
     }
-    puts("bbb");
+
     return model;
 }
 
@@ -295,6 +296,66 @@ void barycentric(Vector p, Vector a, Vector b, Vector c, float &u, float &v, flo
     u = 1.0f - v - w;
 }
 
+// NOTE: assumes texture size is 1024x1024
+// NOTE: max radius for now is 100
+#define MAX_INK_SPOT_RADIUS 100
+void paintCircle(Map map, Face *paint_face, Vector center, float radius, uint8_t r, uint8_t g, uint8_t b) {
+    assert (radius <= 100);
+
+    Vector v0 = map.scale * map.model.vertices[paint_face->vertices[0]];
+    Vector v1 = map.scale * map.model.vertices[paint_face->vertices[1]];
+    Vector v2 = map.scale * map.model.vertices[paint_face->vertices[2]];
+
+    float u, v, w;
+    barycentric(center, v0, v1, v2, u, v, w);
+
+    TextureCoord tex_v0 = map.model.texture_coords[paint_face->texture_coords[0]];
+    TextureCoord tex_v1 = map.model.texture_coords[paint_face->texture_coords[1]];
+    TextureCoord tex_v2 = map.model.texture_coords[paint_face->texture_coords[2]];
+
+    unsigned char *pixels = (unsigned char *) map.model.texture_image->pixels;
+
+    float tex_x, tex_y;
+    tex_x = u * tex_v0.x + v * tex_v1.x + w * tex_v2.x;
+    tex_y = u * tex_v0.y + v * tex_v1.y + w * tex_v2.y;
+
+    int ink_spot[MAX_INK_SPOT_RADIUS][MAX_INK_SPOT_RADIUS] = {};
+    for (int k1 = 0; k1 < MAX_INK_SPOT_RADIUS; k1++) {
+        for (int k2 = 0; k2 < MAX_INK_SPOT_RADIUS; k2++) {
+            int y = tex_y * 1023 - MAX_INK_SPOT_RADIUS/2 + k1;
+            int x = tex_x * 1023 - MAX_INK_SPOT_RADIUS/2 + k2;
+
+            if ((k1-MAX_INK_SPOT_RADIUS/2) * (k1-MAX_INK_SPOT_RADIUS/2)
+                + (k2-MAX_INK_SPOT_RADIUS/2) * (k2-MAX_INK_SPOT_RADIUS/2) <= radius * radius) {
+                // use paint color
+                ink_spot[k1][k2] = r;
+                ink_spot[k1][k2] |= g << 8;
+                ink_spot[k1][k2] |= b << 16;
+                ink_spot[k1][k2] |= 0xFF << 24;
+            } else {
+                // use previous color
+                ink_spot[k1][k2] = pixels[4 * (y * 1024 + x) + 0] << 0;
+                ink_spot[k1][k2] |= pixels[4 * (y * 1024 + x) + 1] << 8;
+                ink_spot[k1][k2] |= pixels[4 * (y * 1024 + x) + 2] << 16;
+                ink_spot[k1][k2] |= pixels[4 * (y * 1024 + x) + 3] << 24;
+            }
+
+            // store current color
+            pixels[4 * (y * 1024 + x) + 0] = (char) (ink_spot[k1][k2]);
+            pixels[4 * (y * 1024 + x) + 1] = (char) (ink_spot[k1][k2] >> 8);
+            pixels[4 * (y * 1024 + x) + 2] = (char) (ink_spot[k1][k2] >> 16);
+            pixels[4 * (y * 1024 + x) + 3] = (char) (ink_spot[k1][k2] >> 24);
+        }
+    }
+
+    glBindTexture(GL_TEXTURE_2D, map.model.texture_id);
+    glTexSubImage2D(GL_TEXTURE_2D, 0,
+            tex_x * 1023 - MAX_INK_SPOT_RADIUS / 2, tex_y * 1023 - MAX_INK_SPOT_RADIUS / 2,
+            MAX_INK_SPOT_RADIUS, MAX_INK_SPOT_RADIUS, GL_RGBA, GL_UNSIGNED_BYTE,
+            (const void *) ink_spot);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
 int main() {
     loadLibraries();
 
@@ -331,16 +392,14 @@ int main() {
 
     // Create map
     Map map;
-    puts("before load model");
-    map.model = loadWavefrontModel("assets/map3.obj", "assets/map.png", VERTEX_ALL);
-    puts("after load model");
+    map.model = loadWavefrontModel("assets/map5.obj", "assets/map.png", VERTEX_ALL);
     map.characterList[0] = &slime;
     map.scale = 0.4;
 
     const Uint8 *kb_state = SDL_GetKeyboardState(NULL);
     bool running = true;
     while (running) {
-        puts("main start");
+
         // handle events
         {
             SDL_Event e;
@@ -386,6 +445,11 @@ int main() {
         Vector max_z = {0, 0, -200};
         Vector rotation_points[4] = {{-200, -200, -200}, {-200, -200, -200}, {-200, -200, -200}, {-200, -200, -200}};
         Vector rotation_normals[4] = {{-200, -200, -200}, {-200, -200, -200}, {-200, -200, -200}, {-200, -200, -200}};
+
+        // DEBUG: currently use for painting
+        Vector paint_max_z = {0, 0, -200};
+        Face *paint_face;
+
         for (int i = 0; i < map.model.num_faces; i++) {
             Face *cur = &map.model.faces[i];
 
@@ -448,56 +512,18 @@ int main() {
                     }
                 }
 
-                // TESTING: does not care about distance or if there is more than one triangle that fits the criteria
+                // DEBUG: this makes the slime paint the ground where it walks
                 Vector sky_slime = {slime.pos.x, slime.pos.y, 200};
                 bool intersect = rayIntersectsTriangle(map, sky_slime, ground, cur, intersect_v);
-                if (intersect) {
-                    Vector v0 = map.scale * map.model.vertices[cur->vertices[0]];
-                    Vector v1 = map.scale * map.model.vertices[cur->vertices[1]];
-                    Vector v2 = map.scale * map.model.vertices[cur->vertices[2]];
-
-                    // TODO: this seems unstable, check if there is something wrong
-                    float u, v, w;
-                    barycentric(intersect_v, v0, v1, v2, u, v, w); // check parameter order
-
-                    printf("%f %f %f\n", u, v, w);
-
-                    TextureCoord tex_v0 = map.model.texture_coords[cur->texture_coords[0]];
-                    TextureCoord tex_v1 = map.model.texture_coords[cur->texture_coords[1]];
-                    TextureCoord tex_v2 = map.model.texture_coords[cur->texture_coords[2]];
-
-                    float tex_x, tex_y;
-                    tex_x = u * tex_v0.x + v * tex_v1.x + w * tex_v2.x;
-                    tex_y = u * tex_v0.y + v * tex_v1.y + w * tex_v2.y;
-
-                    int ink_spot[40][40] = {};
-                    for (int k1 = 0; k1 < 40; k1++) {
-                        for (int k2 = 0; k2 < 40; k2++) {
-                            if ((k1 - 20) * (k1 - 20) + (k2 - 20) * (k2 - 20) <= 30 * 30) {
-                                ink_spot[k1][k2] = 0xFF00FF00;
-                            } else {
-                                ink_spot[k1][k2] = 0x00FFFFFF;
-                            }
-                        }
-                    }
-
-                    printf("%f %f\n", tex_x, tex_y);
-                    glBindTexture(GL_TEXTURE_2D, map.model.texture_id);
-#if 0
-                    int tmp = 0xFF00FF00;
-                    glTexSubImage2D(GL_TEXTURE_2D, 0, tex_x * 1024, tex_y * 1024,
-                                    1, 1, GL_RGBA, GL_UNSIGNED_BYTE,
-                                    (const void *) &tmp);
-#else
-                    glTexSubImage2D(GL_TEXTURE_2D, 0,
-                                    tex_x * 1024 - 20, tex_y * 1024 - 20,
-                                    40, 40, GL_RGBA, GL_UNSIGNED_BYTE,
-                                    (const void *) ink_spot);
-#endif
-                    glBindTexture(GL_TEXTURE_2D, 0);
+                if (intersect && intersect_v.z > paint_max_z.z) {
+                    paint_max_z = intersect_v;
+                    paint_face = cur;
                 }
             }
         }
+
+        paintCircle(map, paint_face, paint_max_z, 40, 0x00, 0xFF, 0x00);
+
 
         Vector normal_sum = {0,0,0};
         for (int j = 0; j < 4; j++) {
@@ -548,7 +574,6 @@ int main() {
 #if DEBUG
         drawSphere(slime.pos, slime.hit_radius);
 #endif
-        puts("c");
 
         // draw map
         {
@@ -567,8 +592,6 @@ int main() {
         }
 
         glClear(GL_DEPTH_BUFFER_BIT);
-
-        puts("c");
 
         // draw slime
         {
