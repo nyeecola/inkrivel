@@ -58,6 +58,7 @@ Model loadWavefrontModel(const char *obj_filename, const char *texture_filename,
     if (face_type == VERTEX_ALL || face_type == VERTEX_TEXTURE) {
         // TODO: do we need to free this?
         SDL_Surface *sur = IMG_Load(texture_filename);
+        assert(sur);
         glGenTextures(1, &model.texture_id);
         glBindTexture(GL_TEXTURE_2D, model.texture_id);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -66,6 +67,7 @@ Model loadWavefrontModel(const char *obj_filename, const char *texture_filename,
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 
+    puts("aaa");
     FILE *f = fopen(obj_filename, "r");
     char type[40] = {};
     while ((fscanf(f, " %s", type)) != EOF) {
@@ -108,6 +110,7 @@ Model loadWavefrontModel(const char *obj_filename, const char *texture_filename,
             model.faces[model.num_faces++] = face;
         }
     }
+    puts("bbb");
     return model;
 }
 
@@ -275,6 +278,23 @@ Quat getRotationQuat(const Vector& from, const Vector& to) {
      return result;
 }
 
+// https://gamedev.stackexchange.com/questions/23743/whats-the-most-efficient-way-to-find-barycentric-coordinates
+// Compute barycentric coordinates (u, v, w) for
+// point p with respect to triangle (a, b, c)
+void barycentric(Vector p, Vector a, Vector b, Vector c, float &u, float &v, float &w)
+{
+    Vector v0 = b - a, v1 = c - a, v2 = p - a;
+    float d00 = v0.dot(v0);
+    float d01 = v0.dot(v1);
+    float d11 = v1.dot(v1);
+    float d20 = v2.dot(v0);
+    float d21 = v2.dot(v1);
+    float denom = d00 * d11 - d01 * d01;
+    v = (d11 * d20 - d01 * d21) / denom;
+    w = (d00 * d21 - d01 * d20) / denom;
+    u = 1.0f - v - w;
+}
+
 int main() {
     loadLibraries();
 
@@ -311,13 +331,16 @@ int main() {
 
     // Create map
     Map map;
-    map.model = loadWavefrontModel("assets/map2.obj", "assets/map.png", VERTEX_NORMAL);
+    puts("before load model");
+    map.model = loadWavefrontModel("assets/map3.obj", "assets/map.png", VERTEX_ALL);
+    puts("after load model");
     map.characterList[0] = &slime;
     map.scale = 0.4;
 
     const Uint8 *kb_state = SDL_GetKeyboardState(NULL);
     bool running = true;
     while (running) {
+        puts("main start");
         // handle events
         {
             SDL_Event e;
@@ -384,6 +407,7 @@ int main() {
 
             float angle = acos(cosine) * 180 / M_PI;
 
+            // walls
             if (angle > 60 && (vertex0.z > next_pos.z || vertex1.z > next_pos.z || vertex2.z > next_pos.z)) {
                 bool collides = sphereCollidesTriangle(next_pos, slime.hit_radius, vertex0, vertex1, vertex2);
 
@@ -398,6 +422,8 @@ int main() {
                     slime.dir.z = reaction_v.z * slime.dir.z > 0 ? reaction_v.z : 0;
                 }
             }
+
+            // floors
             else {
                 Vector sky[4];
                 sky[0] = {slime.pos.x + slime.hit_radius, slime.pos.y, 200};
@@ -420,6 +446,55 @@ int main() {
                             rotation_normals[j] = normal;
                         }
                     }
+                }
+
+                // TESTING: does not care about distance or if there is more than one triangle that fits the criteria
+                Vector sky_slime = {slime.pos.x, slime.pos.y, 200};
+                bool intersect = rayIntersectsTriangle(map, sky_slime, ground, cur, intersect_v);
+                if (intersect) {
+                    Vector v0 = map.scale * map.model.vertices[cur->vertices[0]];
+                    Vector v1 = map.scale * map.model.vertices[cur->vertices[1]];
+                    Vector v2 = map.scale * map.model.vertices[cur->vertices[2]];
+
+                    // TODO: this seems unstable, check if there is something wrong
+                    float u, v, w;
+                    barycentric(intersect_v, v0, v1, v2, u, v, w); // check parameter order
+
+                    printf("%f %f %f\n", u, v, w);
+
+                    TextureCoord tex_v0 = map.model.texture_coords[cur->texture_coords[0]];
+                    TextureCoord tex_v1 = map.model.texture_coords[cur->texture_coords[1]];
+                    TextureCoord tex_v2 = map.model.texture_coords[cur->texture_coords[2]];
+
+                    float tex_x, tex_y;
+                    tex_x = u * tex_v0.x + v * tex_v1.x + w * tex_v2.x;
+                    tex_y = u * tex_v0.y + v * tex_v1.y + w * tex_v2.y;
+
+                    int ink_spot[40][40] = {};
+                    for (int k1 = 0; k1 < 40; k1++) {
+                        for (int k2 = 0; k2 < 40; k2++) {
+                            if ((k1 - 20) * (k1 - 20) + (k2 - 20) * (k2 - 20) <= 30 * 30) {
+                                ink_spot[k1][k2] = 0xFF00FF00;
+                            } else {
+                                ink_spot[k1][k2] = 0x00FFFFFF;
+                            }
+                        }
+                    }
+
+                    printf("%f %f\n", tex_x, tex_y);
+                    glBindTexture(GL_TEXTURE_2D, map.model.texture_id);
+#if 0
+                    int tmp = 0xFF00FF00;
+                    glTexSubImage2D(GL_TEXTURE_2D, 0, tex_x * 1024, tex_y * 1024,
+                                    1, 1, GL_RGBA, GL_UNSIGNED_BYTE,
+                                    (const void *) &tmp);
+#else
+                    glTexSubImage2D(GL_TEXTURE_2D, 0,
+                                    tex_x * 1024 - 20, tex_y * 1024 - 20,
+                                    40, 40, GL_RGBA, GL_UNSIGNED_BYTE,
+                                    (const void *) ink_spot);
+#endif
+                    glBindTexture(GL_TEXTURE_2D, 0);
                 }
             }
         }
@@ -473,6 +548,7 @@ int main() {
 #if DEBUG
         drawSphere(slime.pos, slime.hit_radius);
 #endif
+        puts("c");
 
         // draw map
         {
@@ -491,6 +567,9 @@ int main() {
         }
 
         glClear(GL_DEPTH_BUFFER_BIT);
+
+        puts("c");
+
         // draw slime
         {
             GLfloat mat_ambient[] = { 0.8, 0.8, 0.8, 1.0 };
