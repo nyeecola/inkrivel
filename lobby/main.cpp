@@ -14,13 +14,111 @@
 #include "imgui/imgui_impl_glfw.cpp"
 #include "imgui/imgui_impl_opengl3.cpp"
 
-static void GlfwErrorCallback(int error, const char* description)
-{
+#include "../chat/src/chat_client.cpp"
+
+#define MAX_MSG_LEN (100 + 20)
+
+static void GlfwErrorCallback(int error, const char* description) {
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
-int main(int argc, char **argv) {
+volatile char global_message_history[1000][MAX_MSG_LEN];
+volatile int global_message_history_size = 0;
 
+void *listenServer(void *arg) {
+    for (;;) {
+        // socket file descriptor
+        long socket_fd = (long) arg;
+
+        Packet p;
+        int received = receivePacket(socket_fd, &p);
+
+        // the socket is blocking, so the function must always return 1
+        assert(received);
+
+        switch (p.id) {
+            case MSG_RCV_MESSAGE:
+                {
+                    int len_sender = strlen((const char *) p.body) + 1;
+                    int len_timestamp = sizeof(uint32_t);
+                    int len_message = p.size - len_sender - len_timestamp;
+
+                    char *sender = (char *) calloc(len_sender, sizeof(*sender));
+                    //uint32_t timestamp = ((uint32_t *) p.body)[len_sender+1];
+                    long long timestamp = p.body[len_sender];
+                    timestamp |= p.body[len_sender+1] << 8;
+                    timestamp |= p.body[len_sender+2] << 16;
+                    timestamp |= p.body[len_sender+3] << 24;
+                    char *message = (char *) calloc(len_message, sizeof(*message));
+
+                    memcpy(sender, p.body, len_sender);
+                    memcpy(message, p.body + len_sender + len_timestamp, len_message);
+
+                    struct tm lt;
+                    localtime_r((const long*) &timestamp, &lt);
+                    char formated_time[10];
+                    strftime(formated_time, sizeof(formated_time), "%T", &lt);
+
+                    sprintf((char*) global_message_history[global_message_history_size++],
+                            "[%s - %s]: %s\n", sender, formated_time, message);
+
+                    free(message);
+                    free(sender);
+                }
+                break;
+            case MSG_RCV_WHISPER:
+                {
+                    int len_sender = strlen((const char *) p.body) + 1;
+                    int len_timestamp = sizeof(uint32_t);
+                    int len_message = p.size - len_sender - len_timestamp;
+
+                    char *sender = (char *) calloc(len_sender, sizeof(*sender));
+                    //uint32_t timestamp = ((uint32_t *) p.body)[len_sender+1];
+                    uint32_t timestamp = p.body[len_sender];
+                    timestamp |= p.body[len_sender+1] << 8;
+                    timestamp |= p.body[len_sender+2] << 16;
+                    timestamp |= p.body[len_sender+3] << 24;
+                    char *message = (char *) calloc(len_message, sizeof(*message));
+
+                    memcpy(sender, p.body, len_sender);
+                    memcpy(message, p.body + len_sender + len_timestamp, len_message);
+
+                    printf("RCV WHISPER: %d %d %s %d %s\n", p.id, p.size, sender,
+                                                            timestamp, message);
+
+                    free(message);
+                    free(sender);
+                }
+                break;
+            case MSG_USERLIST:
+                {
+                    char connected_users[500][20];
+                    int connected_users_size = 0;
+
+                    int offset = 0;
+                    while (1) {
+                        int len = strlen((const char *) p.body + offset) +1;
+                        memcpy(connected_users[connected_users_size++], p.body + offset, len);
+                        offset += len;
+
+                        if (offset >= p.size) break;
+                    }
+
+                    for (int i = 0; i < connected_users_size; i++) {
+                        printf("%s\n", connected_users[i]);
+                    }
+                }
+                break;
+        }
+
+        free(p.body);
+    }
+
+    return NULL;
+}
+
+
+int main(int argc, char **argv) {
     // IMGUI / GLFW / OpenGL
     ImVec4 clear_color;
     GLFWwindow *window;
@@ -66,10 +164,11 @@ int main(int argc, char **argv) {
     double DeltaTime = 0, NowTime = 0;
     double TimeSinceUpdate = 0;
 
-    char chatBuffer[200] = {0};
-    char username[50] = {0};
+    int socket_fd = -1;
+
+    char username[20] = {0};
     char password[50] = {0};
-    char buffer[100] = {0};
+    char buffer[MAX_MSG_LEN] = {0};
 
     bool logged = false;
     while (!glfwWindowShouldClose(window)) {
@@ -104,11 +203,28 @@ int main(int argc, char **argv) {
         }
         else {
             {
+                if (socket_fd == -1) {
+                    socket_fd = createSocket();
+                    chatConnect(socket_fd, username);
+
+                    pthread_t listener;
+                    pthread_create(&listener, NULL, listenServer, (void *) socket_fd);
+                }
+
                 ImGui::SetNextWindowSize(ImVec2(0, 0));
                 ImGui::Begin("Chat");
                 {
+                    char chatBuffer[500*MAX_MSG_LEN] = {0};
                     ImGui::BeginChild("ID", ImVec2(500, 500), true, 0);
-                    //ImGui::Text("Uhu chat\nVarios escritos\n");
+                    {
+                        int end = 0;
+
+                        for (int j = 0; j < global_message_history_size; j++) {
+                            int len = strlen((const char*) global_message_history[j]);
+                            memcpy(chatBuffer + end, (const void*) global_message_history[j], len);
+                            end += len;
+                        }
+                    }
                     ImGui::InputTextMultiline("   Secret", chatBuffer, sizeof(chatBuffer), ImVec2(480, 480), ImGuiInputTextFlags_ReadOnly);
                     ImGui::BeginChild(ImGui::GetID("   Secret"));
                     ImGui::SetScrollHere(1);
@@ -118,6 +234,7 @@ int main(int argc, char **argv) {
                     ImGui::PushItemWidth(ImGui::GetWindowContentRegionWidth());
                     int r = ImGui::InputText("", buffer, sizeof(buffer), ImGuiInputTextFlags_EnterReturnsTrue);
                     if (r) {
+#if 0
                         if (strlen(buffer)) {
                             int i = 0;
                             while (chatBuffer[i]) {
@@ -127,6 +244,10 @@ int main(int argc, char **argv) {
                             strcat(chatBuffer, buffer);
                         }
                         memset(buffer, 0, sizeof(buffer));
+#else
+                        chatSendMessage(socket_fd, buffer);
+                        memset(buffer, 0, sizeof(buffer));
+#endif
                         ImGui::SetKeyboardFocusHere(-1);
                     }
                     ImGui::PopItemWidth();
