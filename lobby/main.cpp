@@ -63,7 +63,7 @@ void *listenServer(void *arg) {
                     strftime(formated_time, sizeof(formated_time), "%T", &lt);
 
                     sprintf((char*) global_message_history[global_message_history_size++],
-                            "[%s - %s]: %s\n", sender, formated_time, message);
+                            "%s [%s]: %s\n", formated_time, sender, message);
 
                     free(message);
                     free(sender);
@@ -86,8 +86,13 @@ void *listenServer(void *arg) {
                     memcpy(sender, p.body, len_sender);
                     memcpy(message, p.body + len_sender + len_timestamp, len_message);
 
-                    printf("RCV WHISPER: %d %d %s %d %s\n", p.id, p.size, sender,
-                                                            timestamp, message);
+                    struct tm lt;
+                    localtime_r((const long*) &timestamp, &lt);
+                    char formated_time[10];
+                    strftime(formated_time, sizeof(formated_time), "%T", &lt);
+
+                    sprintf((char*) global_message_history[global_message_history_size++],
+                            "%s from <%s>: %s\n", formated_time, sender, message);
 
                     free(message);
                     free(sender);
@@ -172,6 +177,7 @@ int main(int argc, char **argv) {
     char buffer[MAX_MSG_LEN] = {0};
 
     bool logged = false;
+    int selectedName = -1;
     while (!glfwWindowShouldClose(window)) {
         if (global_message_history_size == 1000) {
             memcpy((void*) global_message_history, (const void*) (global_message_history + (500*MAX_MSG_LEN)), 500*MAX_MSG_LEN);
@@ -239,20 +245,20 @@ int main(int argc, char **argv) {
                     ImGui::PushItemWidth(ImGui::GetWindowContentRegionWidth());
                     int r = ImGui::InputText("", buffer, sizeof(buffer), ImGuiInputTextFlags_EnterReturnsTrue);
                     if (r) {
-#if 0
-                        if (strlen(buffer)) {
-                            int i = 0;
-                            while (chatBuffer[i]) {
-                                i++;
-                            }
-                            if (i) chatBuffer[i] = '\n';
-                            strcat(chatBuffer, buffer);
+                        if (selectedName == -1) {
+                            chatSendMessage(socket_fd, buffer);
+                        }
+                        else {
+                            chatSendWhisper(socket_fd, (const char*) global_connected_users[selectedName], buffer);
+
+                            struct tm lt;
+                            localtime_r((const long*) &time(NULL), &lt);
+                            char formated_time[10];
+                            strftime(formated_time, sizeof(formated_time), "%T", &lt);
+                            sprintf((char*) global_message_history[global_message_history_size++],
+                                    "%s to <%s>: %s\n", formated_time, global_connected_users[selectedName], message);
                         }
                         memset(buffer, 0, sizeof(buffer));
-#else
-                        chatSendMessage(socket_fd, buffer);
-                        memset(buffer, 0, sizeof(buffer));
-#endif
                         ImGui::SetKeyboardFocusHere(-1);
                     }
                     ImGui::PopItemWidth();
@@ -281,9 +287,19 @@ int main(int argc, char **argv) {
                 ImGui::SetNextWindowSize(ImVec2(100, 0));
                 ImGui::Begin("Online");
                 {
+#if 0
                     for (int j = 0; j < global_connected_users_size; j++) {
                         ImGui::Text("%s", global_connected_users[j]);
                     }
+#else
+                    //ImGui::ListBox("", &selectedName, global_connected_users, global_connected_users_size);
+                    for (int j = 0; j < global_connected_users_size; j++) {
+                        if (ImGui::Selectable((const char*) global_connected_users[j], selectedName == j)) {
+                            if (selectedName == j) selectedName = -1;
+                            else selectedName = j;
+                        }
+                    }
+#endif
                 }
                 ImGui::End();
             }
