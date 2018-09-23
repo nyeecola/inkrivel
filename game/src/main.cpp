@@ -556,7 +556,7 @@ int main() {
         // draw sun
         {
             glEnable(GL_LIGHT0);
-            GLfloat light_position[] = { 0.8, 0.5, 28, 1 };
+            GLfloat light_position[] = { 0.8, 0.5, 5, 1 };
             GLfloat ambient[] = { 0.1, 0.1, 0.1, 1 };
             GLfloat diffuse[] = { 1.0, 1.0, 1.0, 1 };
             GLfloat specular[] = { 0.4, 0.4, 0.4, 1 };
@@ -578,7 +578,7 @@ int main() {
 
         // draw map
         {
-#if 0
+#if 1
             GLfloat mat_ambient[] = { 0.24, 0.20, 0.075, 1.0 };
             GLfloat mat_diffuse[] = { 0.75, 0.6, 0.22, 1.0 };
             GLfloat mat_specular[] = { 0.6282, 0.556, 0.366, 1.0 };
