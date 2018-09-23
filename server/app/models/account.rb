@@ -8,7 +8,7 @@ class Account < ApplicationRecord
 
   def connect(password)
     valid = authenticate(password)
-    update(connected: true, last_login: Date.new) if valid
+    update(connected: true, last_login: Time.now) if valid
     valid
   end
 

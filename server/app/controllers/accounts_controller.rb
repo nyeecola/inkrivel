@@ -66,7 +66,7 @@ class AccountsController < ApplicationController
 
     respond_to do |format|
       if @account.connect(params[:password])
-        format.json { head :ok }
+        format.json { render json: { id: @account.id } }
       else
         format.json { head :unauthorized }
       end
