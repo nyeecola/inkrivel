@@ -1,0 +1,57 @@
+<%= form_with(model: character, local: true) do |form| %>
+  <% if character.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(character.errors.count, "error") %> prohibited this character from being saved:</h2>
+
+      <ul>
+      <% character.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="field">
+    <%= form.label :name %>
+    <%= form.text_field :name %>
+  </div>
+
+  <div class="field">
+    <%= form.label :hit_points %>
+    <%= form.number_field :hit_points %>
+  </div>
+
+  <div class="field">
+    <%= form.label :damage %>
+    <%= form.number_field :damage %>
+  </div>
+
+  <div class="field">
+    <%= form.label :attack_speed %>
+    <%= form.text_field :attack_speed %>
+  </div>
+
+  <div class="field">
+    <%= form.label :speed %>
+    <%= form.text_field :speed %>
+  </div>
+
+  <div class="field">
+    <%= form.label :model_file %>
+    <%= form.text_field :model_file %>
+  </div>
+
+  <div class="field">
+    <%= form.label :texture_file %>
+    <%= form.text_field :texture_file %>
+  </div>
+
+  <div class="field">
+    <%= form.label :hitbox_radius %>
+    <%= form.number_field :hitbox_radius %>
+  </div>
+
+  <div class="actions">
+    <%= form.submit %>
+  </div>
+<% end %>

@@ -1,0 +1,24 @@
+<p id="notice"><%= notice %></p>
+
+<p>
+  <strong>Account:</strong>
+  <%= @game_account.account %>
+</p>
+
+<p>
+  <strong>Character:</strong>
+  <%= @game_account.character %>
+</p>
+
+<p>
+  <strong>Matches played:</strong>
+  <%= @game_account.matches_played %>
+</p>
+
+<p>
+  <strong>Winning matches:</strong>
+  <%= @game_account.winning_matches %>
+</p>
+
+<%= link_to 'Edit', edit_game_account_path(@game_account) %> |
+<%= link_to 'Back', game_accounts_path %>

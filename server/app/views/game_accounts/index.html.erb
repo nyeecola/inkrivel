@@ -1,0 +1,33 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Game Accounts</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th>Account</th>
+      <th>Character</th>
+      <th>Matches played</th>
+      <th>Winning matches</th>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @game_accounts.each do |game_account| %>
+      <tr>
+        <td><%= game_account.account %></td>
+        <td><%= game_account.character %></td>
+        <td><%= game_account.matches_played %></td>
+        <td><%= game_account.winning_matches %></td>
+        <td><%= link_to 'Show', game_account %></td>
+        <td><%= link_to 'Edit', edit_game_account_path(game_account) %></td>
+        <td><%= link_to 'Destroy', game_account, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Game Account', new_game_account_path %>
