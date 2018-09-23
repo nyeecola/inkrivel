@@ -6,6 +6,7 @@ class CreateAccounts < ActiveRecord::Migration[5.2]
       t.string :nickname
       t.string :password_digest
       t.date :last_login
+      t.boolean :connected
 
       t.timestamps
     end

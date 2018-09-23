@@ -18,6 +18,7 @@ ActiveRecord::Schema.define(version: 2018_09_23_145158) do
     t.string "nickname"
     t.string "password_digest"
     t.date "last_login"
+    t.boolean "connected"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
   end
