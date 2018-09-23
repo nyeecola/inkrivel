@@ -1,0 +1,41 @@
+<p id="notice"><%= notice %></p>
+
+<h1>Characters</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Hit points</th>
+      <th>Damage</th>
+      <th>Attack speed</th>
+      <th>Speed</th>
+      <th>Model file</th>
+      <th>Texture file</th>
+      <th>Hitbox radius</th>
+      <th colspan="3"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @characters.each do |character| %>
+      <tr>
+        <td><%= character.name %></td>
+        <td><%= character.hit_points %></td>
+        <td><%= character.damage %></td>
+        <td><%= character.attack_speed %></td>
+        <td><%= character.speed %></td>
+        <td><%= character.model_file %></td>
+        <td><%= character.texture_file %></td>
+        <td><%= character.hitbox_radius %></td>
+        <td><%= link_to 'Show', character %></td>
+        <td><%= link_to 'Edit', edit_character_path(character) %></td>
+        <td><%= link_to 'Destroy', character, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Character', new_character_path %>

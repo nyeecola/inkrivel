@@ -1,0 +1,44 @@
+<p id="notice"><%= notice %></p>
+
+<p>
+  <strong>Name:</strong>
+  <%= @character.name %>
+</p>
+
+<p>
+  <strong>Hit points:</strong>
+  <%= @character.hit_points %>
+</p>
+
+<p>
+  <strong>Damage:</strong>
+  <%= @character.damage %>
+</p>
+
+<p>
+  <strong>Attack speed:</strong>
+  <%= @character.attack_speed %>
+</p>
+
+<p>
+  <strong>Speed:</strong>
+  <%= @character.speed %>
+</p>
+
+<p>
+  <strong>Model file:</strong>
+  <%= @character.model_file %>
+</p>
+
+<p>
+  <strong>Texture file:</strong>
+  <%= @character.texture_file %>
+</p>
+
+<p>
+  <strong>Hitbox radius:</strong>
+  <%= @character.hitbox_radius %>
+</p>
+
+<%= link_to 'Edit', edit_character_path(@character) %> |
+<%= link_to 'Back', characters_path %>

@@ -1,0 +1,21 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  name: MyString
+  hit_points: 
+  damage: 
+  attack_speed: 
+  speed: 
+  model_file: MyString
+  texture_file: MyString
+  hitbox_radius: 
+
+two:
+  name: MyString
+  hit_points: 
+  damage: 
+  attack_speed: 
+  speed: 
+  model_file: MyString
+  texture_file: MyString
+  hitbox_radius: 

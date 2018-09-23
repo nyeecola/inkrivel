@@ -1,0 +1,13 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  account_id: 
+  character_id: 
+  matches_played: 
+  winning_matches: 
+
+two:
+  account_id: 
+  character_id: 
+  matches_played: 
+  winning_matches: 
