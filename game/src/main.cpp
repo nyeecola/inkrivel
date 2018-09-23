@@ -392,7 +392,7 @@ int main() {
 
     // Create map
     Map map;
-    map.model = loadWavefrontModel("assets/map5.obj", "assets/map.png", VERTEX_ALL);
+    map.model = loadWavefrontModel("assets/map6.obj", "assets/map.png", VERTEX_ALL);
     map.characterList[0] = &slime;
     map.scale = 0.4;
 
