@@ -522,7 +522,7 @@ int main() {
             }
         }
 
-        paintCircle(map, paint_face, paint_max_z, 40, 0x00, 0xFF, 0x00);
+        paintCircle(map, paint_face, paint_max_z, 40, 0x1F, 0xFF, 0x1F);
 
 
         Vector normal_sum = {0,0,0};
@@ -556,17 +556,18 @@ int main() {
         // draw sun
         {
             glEnable(GL_LIGHT0);
-            GLfloat light_position[] = { 200, 100, 150, 1 };
-            GLfloat ambient[] = { 0.5, 0.5, 0.5, 1 };
-            GLfloat diffuse_specular[] = { 0.7, 0.7, 0.7, 1 };
+            GLfloat light_position[] = { 0.8, 0.5, 28, 1 };
+            GLfloat ambient[] = { 0.1, 0.1, 0.1, 1 };
+            GLfloat diffuse[] = { 1.0, 1.0, 1.0, 1 };
+            GLfloat specular[] = { 0.4, 0.4, 0.4, 1 };
             glLightfv(GL_LIGHT0, GL_POSITION, light_position);
             glLightfv(GL_LIGHT0, GL_AMBIENT, ambient);
-            glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse_specular);
-            glLightfv(GL_LIGHT0, GL_SPECULAR, diffuse_specular);
+            glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse);
+            glLightfv(GL_LIGHT0, GL_SPECULAR, specular);
 
             // default is (1, 0, 0)
-            glLighti(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 4.0);
-            //glLighti(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1);
+            glLighti(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 2.8);
+            //glLighti(GL_LIGHT0, GL_LINEAR_ATTENUATION, 3);
             //glLighti(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 1);
         }
 
@@ -577,10 +578,16 @@ int main() {
 
         // draw map
         {
-            GLfloat mat_ambient[] = { 0.8, 0.8, 0.8, 1.0 };
-            GLfloat mat_diffuse[] = { 0.8, 0.8, 0.8, 1.0 };
-            GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
-            GLfloat mat_shininess[] = { 1.0 };
+#if 0
+            GLfloat mat_ambient[] = { 0.24, 0.20, 0.075, 1.0 };
+            GLfloat mat_diffuse[] = { 0.75, 0.6, 0.22, 1.0 };
+            GLfloat mat_specular[] = { 0.6282, 0.556, 0.366, 1.0 };
+#else
+            GLfloat mat_ambient[] = { 0.17, 0.17, 0.17, 1.0 };
+            GLfloat mat_diffuse[] = { 0.5, 0.5, 0.5, 1.0 };
+            GLfloat mat_specular[] = { 0.5, 0.5, 0.5, 1.0 };
+#endif
+            GLfloat mat_shininess[] = { 1 };
             glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, mat_ambient);
             glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_diffuse);
             glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
@@ -595,10 +602,16 @@ int main() {
 
         // draw slime
         {
-            GLfloat mat_ambient[] = { 0.8, 0.8, 0.8, 1.0 };
-            GLfloat mat_diffuse[] = { 0.8, 0.8, 0.8, 1.0 };
-            GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
-            GLfloat mat_shininess[] = { 1.0 };
+#if 0
+            GLfloat mat_ambient[] = { 0.24, 0.20, 0.075, 1.0 };
+            GLfloat mat_diffuse[] = { 0.75, 0.6, 0.22, 1.0 };
+            GLfloat mat_specular[] = { 0.6282, 0.556, 0.366, 1.0 };
+#else
+            GLfloat mat_ambient[] = { 0.1, 0.1, 0.1, 1.0 };
+            GLfloat mat_diffuse[] = { 0.3, 0.3, 0.3, 1.0 };
+            GLfloat mat_specular[] = { 0.6, 0.6, 0.6, 1.0 };
+#endif
+            GLfloat mat_shininess[] = { 1 };
             glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, mat_ambient);
             glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_diffuse);
             glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
@@ -609,6 +622,7 @@ int main() {
             glRotatef((2*acos(slime.rotation.w)) * 180 / M_PI, slime.rotation.x, slime.rotation.y, slime.rotation.z);
             glRotatef(mouse_angle, 0, 0, 1);
             glScalef(0.2, 0.2, 0.2);
+            //glScalef(0.5, 0.5, 0.5);
             drawModel(slime.model);
             glPopMatrix();
         }
