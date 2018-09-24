@@ -2,6 +2,10 @@
 
 int main(int argc, char **argv) {
 
+    int my_id;
+
+    sscanf(argv[1], "%d", &my_id);
+
     int socket_file_descriptor = createUDPSocket();
 
     hostent *raw_server_address = DNSLookUp();
@@ -37,15 +41,15 @@ int main(int argc, char **argv) {
 
     // Load models
     Models models = {0};
-    models.character[0] = loadWavefrontModel("assets/slime.obj", "assets/slime.png", VERTEX_ALL);
-    models.character[1] = loadWavefrontModel("assets/slime.obj", "assets/slime.png", VERTEX_ALL);
-    models.character[2] = loadWavefrontModel("assets/slime.obj", "assets/slime.png", VERTEX_ALL);
-    models.character[3] = loadWavefrontModel("assets/slime.obj", "assets/slime.png", VERTEX_ALL);
-    models.map = loadWavefrontModel("assets/map.obj", "assets/map.png", VERTEX_ALL);
+    models.character[0] = loadWavefrontModel("../assets/slime.obj", "../assets/slime.png", VERTEX_ALL);
+    models.character[1] = loadWavefrontModel("../assets/slime.obj", "../assets/slime.png", VERTEX_ALL);
+    models.character[2] = loadWavefrontModel("../assets/slime.obj", "../assets/slime.png", VERTEX_ALL);
+    models.character[3] = loadWavefrontModel("../assets/slime.obj", "../assets/slime.png", VERTEX_ALL);
+    models.map = loadWavefrontModel("../assets/map.obj", "../assets/map.png", VERTEX_ALL);
 
+    // TODO : MUST BE INITIALIZED PROPERLY
     InputPacket input = {0};
-    input.id = 0;
-
+    DrawPacket draw = {0};
 
     const Uint8 *kb_state = SDL_GetKeyboardState(NULL);
     bool running = true;
@@ -73,11 +77,11 @@ int main(int argc, char **argv) {
             SDL_GetMouseState(&int_mouse_x, &int_mouse_y);
             input.mouse_x = int_mouse_x;
             input.mouse_y = int_mouse_y;
-            input.mouse_x -= SCREEN_WIDTH/2;
-            input.mouse_y -= SCREEN_HEIGHT/2;
-            float norm = sqrt(input.mouse_x * input.mouse_x + input.mouse_y * input.mouse_y);
-            input.mouse_x /= norm;
-            input.mouse_y /= norm;
+            // input.mouse_x -= SCREEN_WIDTH/2;
+            // input.mouse_y -= SCREEN_HEIGHT/2;
+            // float norm = sqrt(input.mouse_x * input.mouse_x + input.mouse_y * input.mouse_y);
+            // input.mouse_x /= norm;
+            // input.mouse_y /= norm;
         }
         input.foward = kb_state[SDL_SCANCODE_W];
         input.back = kb_state[SDL_SCANCODE_S];
@@ -91,74 +95,31 @@ int main(int argc, char **argv) {
                 exit(1);
             }
         } else {
-            printf("Pacote Input %hu enviado.\n", input.id);
-            printf("id = %d\n", input.id);
+            //printf("Pacote Input %hu enviado.\n", input.id);
             printf("mouse_X, mouse_Y = %f %f\n", input.mouse_x, input.mouse_y);
-            if (input.foward) printf("W"); else printf(" ");
-            if (input.back) printf("S"); else printf(" ");
-            if (input.right) printf("D"); else printf(" ");
-            if (input.left) printf("A"); else printf(" ");
-            if (input.shooting) printf("L"); else printf(" ");
-            if (input.especial) printf("E"); else printf(" ");
-            if (input.running) printf("R"); else printf(" ");
-            printf("\n");
+            //if (input.foward) printf("W"); else printf(" ");
+            //if (input.back) printf("S"); else printf(" ");
+            //if (input.right) printf("D"); else printf(" ");
+            //if (input.left) printf("A"); else printf(" ");
+            //if (input.shooting) printf("L"); else printf(" ");
+            //if (input.especial) printf("E"); else printf(" ");
+            //if (input.running) printf("R"); else printf(" ");
+            //printf("\n");
             input.id = ( input.id + 1 ) % INPUT_ID_WINDOW;
         }
 
 
-        usleep(200000);
-/*
-        if (recvfrom(socket_file_descriptor, &draw_packet, sizeof(draw_packet), 0, NULL, NULL) == ERROR) {
+        if (recvfrom(socket_file_descriptor, &draw, sizeof(draw), 0, NULL, NULL) == ERROR) {
             if (errno != EAGAIN && errno != EWOULDBLOCK) {
                 fprintf(stderr, "ERROR: Unespected error while recieving draw packet. %s.\n", strerror(errno));
                 exit(1);
             }
         } else {
-           printf("Pacote Draw %hu recebido.\n", draw_packet.id);
+            printf("%f\n", draw.mouse_angle[my_id]);
+           //printf("Pacote Draw %hu recebido.\n", draw.id);
         }
-*/
-    }
-
-    close(socket_file_descriptor);
-
-    return 0;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-
-
-
 
         // render
-
         glClearColor(0.4, 0.6, 1, 1);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -166,7 +127,7 @@ int main(int argc, char **argv) {
         glLoadIdentity();
 
         // set camera position
-        glTranslatef(-slime.pos.x, -slime.pos.y, -8);
+        glTranslatef(-draw.pos[my_id].x, -draw.pos[my_id].y, -8);
 
         // draw sun
         {
@@ -185,28 +146,35 @@ int main(int argc, char **argv) {
             //glLighti(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 1);
         }
 
-        // draw slime
-        {
-            GLfloat mat_ambient[] = { 0.8, 0.8, 0.8, 1.0 };
-            GLfloat mat_diffuse[] = { 0.8, 0.8, 0.8, 1.0 };
-            GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
-            GLfloat mat_shininess[] = { 1.0 };
-            glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, mat_ambient);
-            glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_diffuse);
-            glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
-            glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
-            glPushMatrix();
-            glTranslatef(slime.pos.x, slime.pos.y, 0.2);
-            glRotatef(mouse_angle, 0, 0, 1);
-            glScalef(0.2, 0.2, 0.2);
-            drawModel(slime.model);
-            glPopMatrix();
-        }
 
-        // draw slime hitsphere
+        // draw slimes
+        for(int i = 0; i < MAX_PLAYERS ; i++) {
+            if ( draw.online[i] ) {
+                GLfloat mat_ambient[] = { 0.8, 0.8, 0.8, 1.0 };
+                GLfloat mat_diffuse[] = { 0.8, 0.8, 0.8, 1.0 };
+                GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
+                GLfloat mat_shininess[] = { 1.0 };
+                glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, mat_ambient);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_diffuse);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
+                glPushMatrix();
+                glTranslatef(draw.pos[i].x, draw.pos[i].y, 0.2);
+
+
+                glRotatef(draw.mouse_angle[i], 0, 0, 1);
+                glScalef(0.2, 0.2, 0.2);
+                drawModel(models.character[draw.model_id[i]]);
+                glPopMatrix();
+
+
+                // draw slime hitsphere
 #if DEBUG
-        drawSphere(slime.pos, slime.hit_radius);
+                drawSphere(draw.pos[i], draw.hit_radius[i]);
 #endif
+            }
+
+        }
 
         // draw map
         {
@@ -220,38 +188,14 @@ int main(int argc, char **argv) {
             glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
             glPushMatrix();
             glScalef(1.0, 1.0, 1.0);
-            drawModel(map.model);
+            drawModel(models.map);
             glPopMatrix();
         }
 
         SDL_GL_SwapWindow(window);
     }
 
-    return 0;
-}
-
-
-
-
-    InputPacket input_packet = {0};
-    DrawPacket draw_packet = {0};
-
-    input_packet.id = 0;
-
-    for(ever) {
-
-
-        if (recvfrom(socket_file_descriptor, &draw_packet, sizeof(draw_packet), 0, NULL, NULL) == ERROR) {
-            if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                fprintf(stderr, "ERROR: Unespected error while recieving draw packet. %s.\n", strerror(errno));
-                exit(1);
-            }
-        } else {
-           printf("Pacote Draw %hu recebido.\n", draw_packet.id);
-        }
-    }
-
+    close(socket_file_descriptor);
 
     return 0;
 }
-*/

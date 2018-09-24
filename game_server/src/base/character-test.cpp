@@ -1,4 +1,4 @@
-#include "catch.hpp"
+#include "../../../lib/catch.hpp"
 #include "character.hpp"
 
 TEST_CASE( "Character has name" ) {

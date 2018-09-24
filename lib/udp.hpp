@@ -1,3 +1,5 @@
+#pragma once
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -12,15 +14,13 @@
 #include <fcntl.h>
 #include <arpa/inet.h>
 
+#include "config.hpp"
+
 #define SERVER_ADDRESS "127.0.0.1"
 #define SERVER_PORT 27222
 
 #define INPUT_ID_WINDOW 200
 #define DRAW_ID_WINDOW 200
-
-#define ERROR -1
-#define ever ;;
-
 
 typedef struct hostent hostent;
 typedef struct sockaddr_in sockaddr_in;
@@ -29,6 +29,7 @@ typedef struct sockaddr sockaddr;
 
 typedef struct {
     uint8_t id;
+    uint8_t player_id;
     float mouse_x;
     float mouse_y;
     bool foward;
@@ -41,7 +42,11 @@ typedef struct {
 } InputPacket;
 
 typedef struct {
-	unsigned short int id;
+	uint8_t id;
+    bool online[MAX_PLAYERS];
+    Vector pos[MAX_PLAYERS];
+    float mouse_angle[MAX_PLAYERS];
+    uint8_t model_id[MAX_PLAYERS];
 } DrawPacket;
 
 

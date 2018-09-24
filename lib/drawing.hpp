@@ -1,3 +1,5 @@
+#pragma once
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <GL/gl.h>
@@ -7,17 +9,6 @@
 
 #include "render-types.hpp"
 #include "vector.hpp"
-#include "base/character.hpp"
-#include "base/map.hpp"
-#include "udp.hpp"
-
-#define SCREEN_WIDTH 800
-#define SCREEN_HEIGHT 600
-
-#define DEBUG 0
-
-#define MAX(a, b) ((a) > (b) ? a : b)
-#define MIN(a, b) ((a) < (b) ? a : b)
 
 void loadLibraries() {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {

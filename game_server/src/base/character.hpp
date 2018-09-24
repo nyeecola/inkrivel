@@ -1,7 +1,7 @@
 #pragma once
 
-#include "render-types.hpp"
-#include "vector.hpp"
+#include "../../../lib/render-types.hpp"
+#include "../../../lib/vector.hpp"
 #include <string>
 
 using namespace std;
@@ -12,10 +12,8 @@ public:
     Vector pos;
     float speed;
     Vector dir;
-
     //int damage;
     //float range;
-
-    Model model;
     float hit_radius;
+    Model model;
 };
