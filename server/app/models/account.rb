@@ -5,6 +5,10 @@ class Account < ApplicationRecord
   has_one :game_account
   has_one :character, through: :game_account
 
+  validates :user, presence: true, uniqueness: { case_sensitive: false }
+  validates :nickname, presence: true
+  validates :email, presence: true, uniqueness: { case_sensitive: false }
+
 
   def connect(password)
     valid = authenticate(password)
