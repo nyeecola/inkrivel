@@ -13,10 +13,8 @@ public:
     float speed;
     Vector dir;
     Quat rotation;
-
     //int damage;
     //float range;
-
-    Model model;
     float hit_radius;
+    Model model;
 };
