@@ -178,6 +178,103 @@ void drawSphere(Vector center, float radius) {
     glPopMatrix();
 }
 
+// https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
+bool rayIntersectsTriangle(Map map, Vector rayOrigin, Vector rayVector, Face* inTriangle, Vector& outIntersectionPoint) {
+    const float EPSILON = 0.0000001;
+    Vector vertex0 = map.scale * map.model.vertices[inTriangle->vertices[0]];
+    Vector vertex1 = map.scale * map.model.vertices[inTriangle->vertices[1]];
+    Vector vertex2 = map.scale * map.model.vertices[inTriangle->vertices[2]];
+    Vector edge1, edge2, h, s, q;
+    float a,f,u,v;
+    edge1 = vertex1 - vertex0;
+    edge2 = vertex2 - vertex0;
+    h = rayVector.cross(edge2);
+    a = edge1.dot(h);
+    if (a > -EPSILON && a < EPSILON)
+        return false;
+    f = 1/a;
+    s = rayOrigin - vertex0;
+    u = f * (s.dot(h));
+    if (u < 0.0 || u > 1.0)
+        return false;
+    q = s.cross(edge1);
+    v = f * rayVector.dot(q);
+    if (v < 0.0 || u + v > 1.0)
+        return false;
+    // At this stage we can compute t to find out where the intersection point is on the line.
+    float t = f * edge2.dot(q);
+    if (t > EPSILON) { // ray intersection
+        outIntersectionPoint = rayOrigin + rayVector * t;
+        return true;
+    }
+    else // This means that there is a line intersection but not a ray intersection.
+        return false;
+}
+
+// Sphere-Triangle collision from: http://realtimecollisiondetection.net/blog/?p=103
+bool sphereCollidesTriangle(Vector sphere_center, float sphere_radius, Vector triangle0, Vector triangle1, Vector triangle2) {
+    Vector A = triangle0 - sphere_center;
+    Vector B = triangle1 - sphere_center;
+    Vector C = triangle2 - sphere_center;
+    float rr = sphere_radius * sphere_radius;
+    Vector V = (B - A).cross(C - A);
+    float d = A.dot(V);
+    float e = V.dot(V);
+
+    bool sep1 = d*d > rr*e;
+
+    float aa = A.dot(A);
+    float ab = A.dot(B);
+    float ac = A.dot(C);
+    float bb = B.dot(B);
+    float bc = B.dot(C);
+    float cc = C.dot(C);
+
+    bool sep2 = (aa > rr) && (ab > aa) && (ac > aa);
+    bool sep3 = (bb > rr) && (ab > bb) && (bc > bb);
+    bool sep4 = (cc > rr) && (ac > cc) && (bc > cc);
+
+    Vector AB = B - A;
+    Vector BC = C - B;
+    Vector CA = A - C;
+
+    float d1 = ab - aa;
+    float d2 = bc - bb;
+    float d3 = ac - cc;
+
+    float e1 = AB.dot(AB);
+    float e2 = BC.dot(BC);
+    float e3 = CA.dot(CA);
+
+    Vector Q1 = A*e1 - d1*AB;
+    Vector Q2 = B*e2 - d2*BC;
+    Vector Q3 = C*e3 - d3*CA;
+    Vector QC = C*e1 - Q1;
+    Vector QA = A*e2 - Q2;
+    Vector QB = B*e3 - Q3;
+
+    bool sep5 = (Q1.dot(Q1) > rr * e1 * e1) && (Q1.dot(QC) > 0);
+    bool sep6 = (Q2.dot(Q2) > rr * e2 * e2) && (Q2.dot(QA) > 0);
+    bool sep7 = (Q3.dot(Q3) > rr * e3 * e3) && (Q3.dot(QB) > 0);
+
+    bool separated = sep1 || sep2 || sep3 || sep4 || sep5 || sep6 || sep7;
+
+    return !separated;
+}
+
+// https://www.gamedev.net/forums/topic/566295-normal-to-a-quaternion/
+Quat getRotationQuat(const Vector& from, const Vector& to) {
+     Quat result;
+     Vector H = from + to;
+     H.normalize();
+
+     result.w = from.dot(H);
+     result.x = from.y*H.z - from.z*H.y;
+     result.y = from.z*H.x - from.x*H.z;
+     result.z = from.x*H.y - from.y*H.x;
+     return result;
+}
+
 int main() {
     loadLibraries();
 
@@ -206,7 +303,7 @@ int main() {
 
     // Create player slime
     Character slime;
-    slime.pos = {0, 0, 0};
+    slime.pos = {0, 0, 0.35};
     slime.hit_radius = 0.25;
     slime.model = loadWavefrontModel("assets/slime.obj", "assets/slime.png", VERTEX_ALL);
     slime.speed = 0.02;
@@ -214,8 +311,9 @@ int main() {
 
     // Create map
     Map map;
-    map.model = loadWavefrontModel("assets/map.obj", "assets/map.png", VERTEX_ALL);
+    map.model = loadWavefrontModel("assets/map2.obj", "assets/map.png", VERTEX_NORMAL);
     map.characterList[0] = &slime;
+    map.scale = 0.4;
 
     const Uint8 *kb_state = SDL_GetKeyboardState(NULL);
     bool running = true;
@@ -261,82 +359,77 @@ int main() {
         }
 
         // collision
-        if (slime.dir.len()) {
-            for (int i = 0; i < map.model.num_faces; i++) {
-                Face *cur = &map.model.faces[i];
+        Vector next_pos = slime.pos + slime.dir;
+        Vector max_z = {0, 0, -200};
+        Vector rotation_points[4] = {{-200, -200, -200}, {-200, -200, -200}, {-200, -200, -200}, {-200, -200, -200}};
+        Vector rotation_normals[4] = {{-200, -200, -200}, {-200, -200, -200}, {-200, -200, -200}, {-200, -200, -200}};
+        for (int i = 0; i < map.model.num_faces; i++) {
+            Face *cur = &map.model.faces[i];
 
-                Vector v1 = map.model.vertices[cur->vertices[2]] - map.model.vertices[cur->vertices[0]];
-                Vector v2 = map.model.vertices[cur->vertices[1]] - map.model.vertices[cur->vertices[0]];
-                Vector normal = v1.cross(v2);
-                normal.normalize();
-                if (normal.z < 0) {
-                    normal = normal * -1;
+            Vector vertex0 = map.scale * map.model.vertices[cur->vertices[0]];
+            Vector vertex1 = map.scale * map.model.vertices[cur->vertices[1]];
+            Vector vertex2 = map.scale * map.model.vertices[cur->vertices[2]];
+
+            Vector v1 = vertex2 - vertex0;
+            Vector v2 = vertex1 - vertex0;
+            Vector normal = v1.cross(v2);
+            normal.normalize();
+            if (normal.z < 0) {
+                normal = normal * -1;
+            }
+
+            Vector up = {0, 0, 1};
+
+            float cosine = normal.dot(up);
+
+            float angle = acos(cosine) * 180 / M_PI;
+
+            if (angle > 60 && (vertex0.z > next_pos.z || vertex1.z > next_pos.z || vertex2.z > next_pos.z)) {
+                bool collides = sphereCollidesTriangle(next_pos, slime.hit_radius, vertex0, vertex1, vertex2);
+
+                if (collides) {
+                    Vector v = slime.pos - vertex0;
+                    float d = v.dot(normal);
+                    Vector collision = d*normal;
+
+                    Vector reaction_v = slime.dir + collision;
+                    slime.dir.x = reaction_v.x * slime.dir.x > 0 ? reaction_v.x : 0;
+                    slime.dir.y = reaction_v.y * slime.dir.y > 0 ? reaction_v.y : 0;
+                    slime.dir.z = reaction_v.z * slime.dir.z > 0 ? reaction_v.z : 0;
                 }
+            }
+            else {
+                Vector sky[4];
+                sky[0] = {slime.pos.x + slime.hit_radius, slime.pos.y, 200};
+                sky[1] = {slime.pos.x - slime.hit_radius, slime.pos.y, 200};
+                sky[2] = {slime.pos.x, slime.pos.y + slime.hit_radius, 200};
+                sky[3] = {slime.pos.x, slime.pos.y - slime.hit_radius, 200};
 
-                Vector up = {0, 0, 1};
+                Vector ground = {0, 0, -1};
 
-                float cosine = normal.dot(up);
+                Vector intersect_v;
+                for (int j = 0; j < 4; j++) {
+                    bool intersect = rayIntersectsTriangle(map, sky[j], ground, cur, intersect_v);
+                    if (intersect) {
+                        if (max_z.z < intersect_v.z) {
+                            max_z = intersect_v;
+                        }
 
-                float angle = acos(cosine) * 180 / M_PI;
-
-                // Sphere-Triangle collision from: http://realtimecollisiondetection.net/blog/?p=103
-                if (angle > 60) {
-                    Vector A = map.model.vertices[cur->vertices[0]] - slime.pos;
-                    Vector B = map.model.vertices[cur->vertices[1]] - slime.pos;
-                    Vector C = map.model.vertices[cur->vertices[2]] - slime.pos;
-                    float rr = slime.hit_radius * slime.hit_radius;
-                    Vector V = (B - A).cross(C - A);
-                    float d = A.dot(V);
-                    float e = V.dot(V);
-
-                    bool sep1 = d*d > rr*e;
-
-                    float aa = A.dot(A);
-                    float ab = A.dot(B);
-                    float ac = A.dot(C);
-                    float bb = B.dot(B);
-                    float bc = B.dot(C);
-                    float cc = C.dot(C);
-
-                    bool sep2 = (aa > rr) && (ab > aa) && (ac > aa);
-                    bool sep3 = (bb > rr) && (ab > bb) && (bc > bb);
-                    bool sep4 = (cc > rr) && (ac > cc) && (bc > cc);
-
-                    Vector AB = B - A;
-                    Vector BC = C - B;
-                    Vector CA = A - C;
-
-                    float d1 = ab - aa;
-                    float d2 = bc - bb;
-                    float d3 = ac - cc;
-
-                    float e1 = AB.dot(AB);
-                    float e2 = BC.dot(BC);
-                    float e3 = CA.dot(CA);
-
-                    Vector Q1 = A*e1 - d1*AB;
-                    Vector Q2 = B*e2 - d2*BC;
-                    Vector Q3 = C*e3 - d3*CA;
-                    Vector QC = C*e1 - Q1;
-                    Vector QA = A*e2 - Q2;
-                    Vector QB = B*e3 - Q3;
-
-                    bool sep5 = (Q1.dot(Q1) > rr * e1 * e1) && (Q1.dot(QC) > 0);
-                    bool sep6 = (Q2.dot(Q2) > rr * e2 * e2) && (Q2.dot(QA) > 0);
-                    bool sep7 = (Q3.dot(Q3) > rr * e3 * e3) && (Q3.dot(QB) > 0);
-
-                    bool separated = sep1 || sep2 || sep3 || sep4 || sep5 || sep6 || sep7;
-
-                    if (!separated && slime.dir.dot(normal) > 0) {
-                        normal.z = 0;
-                        normal.normalize();
-                        normal *= slime.speed * normal.dot(slime.dir) / (normal.len()*slime.dir.len());
-
-                        slime.dir -= normal;
+                        if (rotation_points[j].z < intersect_v.z) {
+                            rotation_points[j] = intersect_v;
+                            rotation_normals[j] = normal;
+                        }
                     }
                 }
             }
         }
+
+        Vector normal_sum = {0,0,0};
+        for (int j = 0; j < 4; j++) {
+            normal_sum += rotation_normals[j];
+        }
+        normal_sum.normalize();
+        slime.rotation = getRotationQuat({0,0,1}, normal_sum);
 
         // Slime movement
         if (slime.dir.len() > slime.speed) {
@@ -344,6 +437,9 @@ int main() {
             slime.dir *= slime.speed;
         }
         slime.pos += slime.dir;
+        if (max_z.z > 0) {
+            slime.pos.z += 0.5*(max_z.z - slime.pos.z);
+        }
 
         // render
 
@@ -359,7 +455,7 @@ int main() {
         // draw sun
         {
             glEnable(GL_LIGHT0);
-            GLfloat light_position[] = { 100, 100, 150, 1 };
+            GLfloat light_position[] = { 200, 100, 150, 1 };
             GLfloat ambient[] = { 0.5, 0.5, 0.5, 1 };
             GLfloat diffuse_specular[] = { 0.7, 0.7, 0.7, 1 };
             glLightfv(GL_LIGHT0, GL_POSITION, light_position);
@@ -371,24 +467,6 @@ int main() {
             glLighti(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 4.0);
             //glLighti(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1);
             //glLighti(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 1);
-        }
-
-        // draw slime
-        {
-            GLfloat mat_ambient[] = { 0.8, 0.8, 0.8, 1.0 };
-            GLfloat mat_diffuse[] = { 0.8, 0.8, 0.8, 1.0 };
-            GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
-            GLfloat mat_shininess[] = { 1.0 };
-            glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, mat_ambient);
-            glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_diffuse);
-            glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
-            glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
-            glPushMatrix();
-            glTranslatef(slime.pos.x, slime.pos.y, 0.2);
-            glRotatef(mouse_angle, 0, 0, 1);
-            glScalef(0.2, 0.2, 0.2);
-            drawModel(slime.model);
-            glPopMatrix();
         }
 
         // draw slime hitsphere
@@ -407,8 +485,29 @@ int main() {
             glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
             glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
             glPushMatrix();
-            glScalef(1.0, 1.0, 1.0);
+            glScalef(map.scale, map.scale, map.scale);
             drawModel(map.model);
+            glPopMatrix();
+        }
+
+        glClear(GL_DEPTH_BUFFER_BIT);
+        // draw slime
+        {
+            GLfloat mat_ambient[] = { 0.8, 0.8, 0.8, 1.0 };
+            GLfloat mat_diffuse[] = { 0.8, 0.8, 0.8, 1.0 };
+            GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
+            GLfloat mat_shininess[] = { 1.0 };
+            glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, mat_ambient);
+            glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_diffuse);
+            glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
+            glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
+            glPushMatrix();
+            glTranslatef(slime.pos.x, slime.pos.y, slime.pos.z);
+            // From AllegroGL`s math.c
+            glRotatef((2*acos(slime.rotation.w)) * 180 / M_PI, slime.rotation.x, slime.rotation.y, slime.rotation.z);
+            glRotatef(mouse_angle, 0, 0, 1);
+            glScalef(0.2, 0.2, 0.2);
+            drawModel(slime.model);
             glPopMatrix();
         }
 

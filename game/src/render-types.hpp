@@ -3,14 +3,13 @@
 #include <GL/gl.h>
 #include "vector.hpp"
 
-#if 0
-class Vertex {
-public:
-    float x;
-    float y;
-    float z;
+class Quat {
+    public:
+        float w;
+        float x;
+        float y;
+        float z;
 };
-#endif
 
 class Normal {
 public:

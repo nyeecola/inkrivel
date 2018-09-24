@@ -9,4 +9,5 @@ class Map {
 public:
     Character *characterList[8];
     Model model;
+    float scale;
 };
