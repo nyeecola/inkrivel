@@ -4,6 +4,7 @@
 - SDL2_mixer
 - SDL2_image
 - stb_truetype (https://github.com/nothings/stb/blob/master/stb_truetype.h
+- glfw
 
 # Para compilar
 Entre no diretório `src`:
