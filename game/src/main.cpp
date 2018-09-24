@@ -392,7 +392,7 @@ int main() {
 
     // Create map
     Map map;
-    map.model = loadWavefrontModel("assets/map6.obj", "assets/map.png", VERTEX_ALL);
+    map.model = loadWavefrontModel("assets/map7.obj", "assets/map.png", VERTEX_ALL);
     map.characterList[0] = &slime;
     map.scale = 0.4;
 
@@ -578,7 +578,7 @@ int main() {
 
         // draw map
         {
-#if 1
+#if 0
             GLfloat mat_ambient[] = { 0.24, 0.20, 0.075, 1.0 };
             GLfloat mat_diffuse[] = { 0.75, 0.6, 0.22, 1.0 };
             GLfloat mat_specular[] = { 0.6282, 0.556, 0.366, 1.0 };
