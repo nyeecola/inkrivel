@@ -280,6 +280,7 @@ int main(int argc, char **argv) {
                     ImGui::Separator();
 
                     if (ImGui::Button("Play", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+                        assert(execvp("../game/runner", 0) >= 0);
                     }
                 }
                 ImGui::End();

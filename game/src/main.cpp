@@ -386,13 +386,13 @@ int main() {
     Character slime;
     slime.pos = {0, 0, 0.35};
     slime.hit_radius = 0.25;
-    slime.model = loadWavefrontModel("assets/slime.obj", "assets/slime.png", VERTEX_ALL);
+    slime.model = loadWavefrontModel("../game/assets/slime.obj", "../game/assets/slime.png", VERTEX_ALL);
     slime.speed = 0.02;
     slime.dir = {0, 0, 0};
 
     // Create map
     Map map;
-    map.model = loadWavefrontModel("assets/map7.obj", "assets/map.png", VERTEX_ALL);
+    map.model = loadWavefrontModel("../game/assets/map7.obj", "../game/assets/map.png", VERTEX_ALL);
     map.characterList[0] = &slime;
     map.scale = 0.4;
 
