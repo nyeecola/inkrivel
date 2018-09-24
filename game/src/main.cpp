@@ -56,14 +56,17 @@ Model loadWavefrontModel(const char *obj_filename, const char *texture_filename,
     model.texture_coords = (TextureCoord *) malloc(100000 * sizeof(TextureCoord));
 
     if (face_type == VERTEX_ALL || face_type == VERTEX_TEXTURE) {
-        // TODO: do we need to free this?
+        // TODO: do we need to free this? For the map be careful, because we need the pointer
         SDL_Surface *sur = IMG_Load(texture_filename);
+        assert(sur);
         glGenTextures(1, &model.texture_id);
         glBindTexture(GL_TEXTURE_2D, model.texture_id);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexImage2D(GL_TEXTURE_2D, 0, 4, 1024, 1024, 0, GL_RGBA, GL_UNSIGNED_BYTE, sur->pixels);
         glBindTexture(GL_TEXTURE_2D, 0);
+
+        model.texture_image = sur;
     }
 
     FILE *f = fopen(obj_filename, "r");
@@ -108,6 +111,7 @@ Model loadWavefrontModel(const char *obj_filename, const char *texture_filename,
             model.faces[model.num_faces++] = face;
         }
     }
+
     return model;
 }
 
@@ -275,6 +279,83 @@ Quat getRotationQuat(const Vector& from, const Vector& to) {
      return result;
 }
 
+// https://gamedev.stackexchange.com/questions/23743/whats-the-most-efficient-way-to-find-barycentric-coordinates
+// Compute barycentric coordinates (u, v, w) for
+// point p with respect to triangle (a, b, c)
+void barycentric(Vector p, Vector a, Vector b, Vector c, float &u, float &v, float &w)
+{
+    Vector v0 = b - a, v1 = c - a, v2 = p - a;
+    float d00 = v0.dot(v0);
+    float d01 = v0.dot(v1);
+    float d11 = v1.dot(v1);
+    float d20 = v2.dot(v0);
+    float d21 = v2.dot(v1);
+    float denom = d00 * d11 - d01 * d01;
+    v = (d11 * d20 - d01 * d21) / denom;
+    w = (d00 * d21 - d01 * d20) / denom;
+    u = 1.0f - v - w;
+}
+
+// NOTE: assumes texture size is 1024x1024
+// NOTE: max radius for now is 100
+#define MAX_INK_SPOT_RADIUS 100
+void paintCircle(Map map, Face *paint_face, Vector center, float radius, uint8_t r, uint8_t g, uint8_t b) {
+    assert (radius <= 100);
+
+    Vector v0 = map.scale * map.model.vertices[paint_face->vertices[0]];
+    Vector v1 = map.scale * map.model.vertices[paint_face->vertices[1]];
+    Vector v2 = map.scale * map.model.vertices[paint_face->vertices[2]];
+
+    float u, v, w;
+    barycentric(center, v0, v1, v2, u, v, w);
+
+    TextureCoord tex_v0 = map.model.texture_coords[paint_face->texture_coords[0]];
+    TextureCoord tex_v1 = map.model.texture_coords[paint_face->texture_coords[1]];
+    TextureCoord tex_v2 = map.model.texture_coords[paint_face->texture_coords[2]];
+
+    unsigned char *pixels = (unsigned char *) map.model.texture_image->pixels;
+
+    float tex_x, tex_y;
+    tex_x = u * tex_v0.x + v * tex_v1.x + w * tex_v2.x;
+    tex_y = u * tex_v0.y + v * tex_v1.y + w * tex_v2.y;
+
+    int ink_spot[MAX_INK_SPOT_RADIUS][MAX_INK_SPOT_RADIUS] = {};
+    for (int k1 = 0; k1 < MAX_INK_SPOT_RADIUS; k1++) {
+        for (int k2 = 0; k2 < MAX_INK_SPOT_RADIUS; k2++) {
+            int y = tex_y * 1023 - MAX_INK_SPOT_RADIUS/2 + k1;
+            int x = tex_x * 1023 - MAX_INK_SPOT_RADIUS/2 + k2;
+
+            if ((k1-MAX_INK_SPOT_RADIUS/2) * (k1-MAX_INK_SPOT_RADIUS/2)
+                + (k2-MAX_INK_SPOT_RADIUS/2) * (k2-MAX_INK_SPOT_RADIUS/2) <= radius * radius) {
+                // use paint color
+                ink_spot[k1][k2] = r;
+                ink_spot[k1][k2] |= g << 8;
+                ink_spot[k1][k2] |= b << 16;
+                ink_spot[k1][k2] |= 0xFF << 24;
+            } else {
+                // use previous color
+                ink_spot[k1][k2] = pixels[4 * (y * 1024 + x) + 0] << 0;
+                ink_spot[k1][k2] |= pixels[4 * (y * 1024 + x) + 1] << 8;
+                ink_spot[k1][k2] |= pixels[4 * (y * 1024 + x) + 2] << 16;
+                ink_spot[k1][k2] |= pixels[4 * (y * 1024 + x) + 3] << 24;
+            }
+
+            // store current color
+            pixels[4 * (y * 1024 + x) + 0] = (char) (ink_spot[k1][k2]);
+            pixels[4 * (y * 1024 + x) + 1] = (char) (ink_spot[k1][k2] >> 8);
+            pixels[4 * (y * 1024 + x) + 2] = (char) (ink_spot[k1][k2] >> 16);
+            pixels[4 * (y * 1024 + x) + 3] = (char) (ink_spot[k1][k2] >> 24);
+        }
+    }
+
+    glBindTexture(GL_TEXTURE_2D, map.model.texture_id);
+    glTexSubImage2D(GL_TEXTURE_2D, 0,
+            tex_x * 1023 - MAX_INK_SPOT_RADIUS / 2, tex_y * 1023 - MAX_INK_SPOT_RADIUS / 2,
+            MAX_INK_SPOT_RADIUS, MAX_INK_SPOT_RADIUS, GL_RGBA, GL_UNSIGNED_BYTE,
+            (const void *) ink_spot);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
 int main() {
     loadLibraries();
 
@@ -311,13 +392,14 @@ int main() {
 
     // Create map
     Map map;
-    map.model = loadWavefrontModel("assets/map2.obj", "assets/map.png", VERTEX_NORMAL);
+    map.model = loadWavefrontModel("assets/map7.obj", "assets/map.png", VERTEX_ALL);
     map.characterList[0] = &slime;
     map.scale = 0.4;
 
     const Uint8 *kb_state = SDL_GetKeyboardState(NULL);
     bool running = true;
     while (running) {
+
         // handle events
         {
             SDL_Event e;
@@ -363,6 +445,11 @@ int main() {
         Vector max_z = {0, 0, -200};
         Vector rotation_points[4] = {{-200, -200, -200}, {-200, -200, -200}, {-200, -200, -200}, {-200, -200, -200}};
         Vector rotation_normals[4] = {{-200, -200, -200}, {-200, -200, -200}, {-200, -200, -200}, {-200, -200, -200}};
+
+        // DEBUG: currently use for painting
+        Vector paint_max_z = {0, 0, -200};
+        Face *paint_face;
+
         for (int i = 0; i < map.model.num_faces; i++) {
             Face *cur = &map.model.faces[i];
 
@@ -384,6 +471,7 @@ int main() {
 
             float angle = acos(cosine) * 180 / M_PI;
 
+            // walls
             if (angle > 60 && (vertex0.z > next_pos.z || vertex1.z > next_pos.z || vertex2.z > next_pos.z)) {
                 bool collides = sphereCollidesTriangle(next_pos, slime.hit_radius, vertex0, vertex1, vertex2);
 
@@ -398,6 +486,8 @@ int main() {
                     slime.dir.z = reaction_v.z * slime.dir.z > 0 ? reaction_v.z : 0;
                 }
             }
+
+            // floors
             else {
                 Vector sky[4];
                 sky[0] = {slime.pos.x + slime.hit_radius, slime.pos.y, 200};
@@ -421,8 +511,19 @@ int main() {
                         }
                     }
                 }
+
+                // DEBUG: this makes the slime paint the ground where it walks
+                Vector sky_slime = {slime.pos.x, slime.pos.y, 200};
+                bool intersect = rayIntersectsTriangle(map, sky_slime, ground, cur, intersect_v);
+                if (intersect && intersect_v.z > paint_max_z.z) {
+                    paint_max_z = intersect_v;
+                    paint_face = cur;
+                }
             }
         }
+
+        paintCircle(map, paint_face, paint_max_z, 40, 0x1F, 0xFF, 0x1F);
+
 
         Vector normal_sum = {0,0,0};
         for (int j = 0; j < 4; j++) {
@@ -455,17 +556,18 @@ int main() {
         // draw sun
         {
             glEnable(GL_LIGHT0);
-            GLfloat light_position[] = { 200, 100, 150, 1 };
-            GLfloat ambient[] = { 0.5, 0.5, 0.5, 1 };
-            GLfloat diffuse_specular[] = { 0.7, 0.7, 0.7, 1 };
+            GLfloat light_position[] = { 0.8, 0.5, 5, 1 };
+            GLfloat ambient[] = { 0.1, 0.1, 0.1, 1 };
+            GLfloat diffuse[] = { 1.0, 1.0, 1.0, 1 };
+            GLfloat specular[] = { 0.4, 0.4, 0.4, 1 };
             glLightfv(GL_LIGHT0, GL_POSITION, light_position);
             glLightfv(GL_LIGHT0, GL_AMBIENT, ambient);
-            glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse_specular);
-            glLightfv(GL_LIGHT0, GL_SPECULAR, diffuse_specular);
+            glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse);
+            glLightfv(GL_LIGHT0, GL_SPECULAR, specular);
 
             // default is (1, 0, 0)
-            glLighti(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 4.0);
-            //glLighti(GL_LIGHT0, GL_LINEAR_ATTENUATION, 1);
+            glLighti(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 2.8);
+            //glLighti(GL_LIGHT0, GL_LINEAR_ATTENUATION, 3);
             //glLighti(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 1);
         }
 
@@ -476,10 +578,16 @@ int main() {
 
         // draw map
         {
-            GLfloat mat_ambient[] = { 0.8, 0.8, 0.8, 1.0 };
-            GLfloat mat_diffuse[] = { 0.8, 0.8, 0.8, 1.0 };
-            GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
-            GLfloat mat_shininess[] = { 1.0 };
+#if 0
+            GLfloat mat_ambient[] = { 0.24, 0.20, 0.075, 1.0 };
+            GLfloat mat_diffuse[] = { 0.75, 0.6, 0.22, 1.0 };
+            GLfloat mat_specular[] = { 0.6282, 0.556, 0.366, 1.0 };
+#else
+            GLfloat mat_ambient[] = { 0.17, 0.17, 0.17, 1.0 };
+            GLfloat mat_diffuse[] = { 0.5, 0.5, 0.5, 1.0 };
+            GLfloat mat_specular[] = { 0.5, 0.5, 0.5, 1.0 };
+#endif
+            GLfloat mat_shininess[] = { 1 };
             glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, mat_ambient);
             glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_diffuse);
             glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
@@ -491,12 +599,19 @@ int main() {
         }
 
         glClear(GL_DEPTH_BUFFER_BIT);
+
         // draw slime
         {
-            GLfloat mat_ambient[] = { 0.8, 0.8, 0.8, 1.0 };
-            GLfloat mat_diffuse[] = { 0.8, 0.8, 0.8, 1.0 };
-            GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
-            GLfloat mat_shininess[] = { 1.0 };
+#if 0
+            GLfloat mat_ambient[] = { 0.24, 0.20, 0.075, 1.0 };
+            GLfloat mat_diffuse[] = { 0.75, 0.6, 0.22, 1.0 };
+            GLfloat mat_specular[] = { 0.6282, 0.556, 0.366, 1.0 };
+#else
+            GLfloat mat_ambient[] = { 0.1, 0.1, 0.1, 1.0 };
+            GLfloat mat_diffuse[] = { 0.3, 0.3, 0.3, 1.0 };
+            GLfloat mat_specular[] = { 0.6, 0.6, 0.6, 1.0 };
+#endif
+            GLfloat mat_shininess[] = { 1 };
             glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, mat_ambient);
             glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_diffuse);
             glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
@@ -507,6 +622,7 @@ int main() {
             glRotatef((2*acos(slime.rotation.w)) * 180 / M_PI, slime.rotation.x, slime.rotation.y, slime.rotation.z);
             glRotatef(mouse_angle, 0, 0, 1);
             glScalef(0.2, 0.2, 0.2);
+            //glScalef(0.5, 0.5, 0.5);
             drawModel(slime.model);
             glPopMatrix();
         }
