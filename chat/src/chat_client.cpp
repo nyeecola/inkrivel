@@ -15,99 +15,10 @@
 #define SERVER_ADDRESS "127.0.0.1"
 #define SERVER_PORT 17555
 
-void *listenServer(void *arg) {
-    for (;;) {
-        // socket file descriptor
-        long socket_fd = (long) arg;
-
-        Packet p;
-        int received = receivePacket(socket_fd, &p);
-
-        // the socket is blocking, so the function must always return 1
-        assert(received); 
-
-        switch (p.id) {
-            case MSG_RCV_MESSAGE:
-                {
-                    int len_sender = strlen((const char *) p.body) + 1;
-                    int len_timestamp = sizeof(uint32_t);
-                    int len_message = p.size - len_sender - len_timestamp;
-
-                    char *sender = (char *) calloc(len_sender, sizeof(*sender));
-                    //uint32_t timestamp = ((uint32_t *) p.body)[len_sender+1];
-                    uint32_t timestamp = p.body[len_sender];
-                    timestamp |= p.body[len_sender+1] << 8;
-                    timestamp |= p.body[len_sender+2] << 16;
-                    timestamp |= p.body[len_sender+3] << 24;
-                    char *message = (char *) calloc(len_message, sizeof(*message));
-
-                    memcpy(sender, p.body, len_sender);
-                    memcpy(message, p.body + len_sender + len_timestamp, len_message);
-
-                    printf("RCV MESSAGE: %d %d %s %d %s\n", p.id, p.size, sender,
-                                                            timestamp, message);
-
-                    free(message);
-                    free(sender);
-                }
-                break;
-            case MSG_RCV_WHISPER:
-                {
-                    int len_sender = strlen((const char *) p.body) + 1;
-                    int len_timestamp = sizeof(uint32_t);
-                    int len_message = p.size - len_sender - len_timestamp;
-
-                    char *sender = (char *) calloc(len_sender, sizeof(*sender));
-                    //uint32_t timestamp = ((uint32_t *) p.body)[len_sender+1];
-                    uint32_t timestamp = p.body[len_sender];
-                    timestamp |= p.body[len_sender+1] << 8;
-                    timestamp |= p.body[len_sender+2] << 16;
-                    timestamp |= p.body[len_sender+3] << 24;
-                    char *message = (char *) calloc(len_message, sizeof(*message));
-
-                    memcpy(sender, p.body, len_sender);
-                    memcpy(message, p.body + len_sender + len_timestamp, len_message);
-
-                    printf("RCV WHISPER: %d %d %s %d %s\n", p.id, p.size, sender,
-                                                            timestamp, message);
-
-                    free(message);
-                    free(sender);
-                }
-                break;
-            case MSG_USERLIST:
-                {
-                    char connected_users[500][20];
-                    int connected_users_size = 0;
-
-                    int offset = 0;
-                    while (1) {
-                        int len = strlen((const char *) p.body + offset) +1;
-                        memcpy(connected_users[connected_users_size++], p.body + offset, len);
-                        offset += len;
-
-                        if (offset >= p.size) break;
-                    }
-
-                    for (int i = 0; i < connected_users_size; i++) {
-                        printf("%s\n", connected_users[i]);
-                    }
-                }
-                break;
-        }
-
-        free(p.body);
-    }
-
-    return NULL;
-}
-
-void chatConnect(int socket_fd) {
-    char name[] = "Italo";
-
+void chatConnect(int socket_fd, char name[20]) {
     Packet p;
     p.id = MSG_CONNECT;
-    p.size = sizeof(name);
+    p.size = strlen(name) +1;
     p.body = (byte *) calloc(p.size, sizeof(*p.body));
     memcpy(p.body, name, p.size);
 
@@ -144,7 +55,7 @@ void chatSendWhisper(int socket_fd, const char *destination, const char *message
     free(p.body);
 }
 
-int main(int argc, char **argv) {
+int createSocket() {
     // create TCP blocking socket
     long socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd < 0) {
@@ -172,29 +83,12 @@ int main(int argc, char **argv) {
         fprintf(stderr, "ERROR: %s\n", strerror(errno));
         return -1;
     }
+    
+    return socket_fd;
+}
 
-    // change TCP socket to non-blocking mode
-    //fcntl(socket_fd, F_SETFL, O_NONBLOCK);
-
-    pthread_t listener;
-    pthread_create(&listener, NULL, listenServer, (void *) socket_fd);
-
-    // main loop
 #if 0
-    for (;;) {
-        // avoid burning cycles
-        usleep(10000);
-
-        char buffer[MAX_MESSAGE_SIZE+1] = {0};
-        fgets(buffer, MAX_MESSAGE_SIZE, stdin);
-        int n = write(socket_fd, buffer, MAX_MESSAGE_SIZE+1);
-        if (n < 0) {
-            fprintf(stderr, "ERROR: Failed to send message to server.\n");
-        } else {
-            //fprintf(stdout, "Message sent.\n");
-        }
-    }
-#else
+int main(int argc, char **argv) {
         chatConnect(socket_fd);
         usleep(1000000);
         chatSendMessage(socket_fd, "BLZ?");
@@ -205,7 +99,7 @@ int main(int argc, char **argv) {
         while (1) {
             usleep(1000000);
         }
-#endif
 
     return 0;
 }
+#endif

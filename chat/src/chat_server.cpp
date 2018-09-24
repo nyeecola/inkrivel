@@ -139,18 +139,22 @@ void handleNewMessage(int *index, pollfd *sockets_to_poll, int *size) {
 
     // connection is closed
     if (!received) {
-        for (int j = *index; j < *size-1; j++) {
+        puts("Connection closed.");
+        for (int j = *index; j < (*size); j++) {
             sockets_to_poll[j] = sockets_to_poll[j+1];
         }
         *size -= 1;
         *index -= 1;
-        puts("Connection closed.");
 
         int user_index = getUserIndexBySocket(socket_fd);
         for (int j = user_index; j < global_connected_users_size-1; j++) {
             global_connected_users[j] = global_connected_users[j+1];
         }
         global_connected_users_size--;
+
+        for (int i = 0; i < global_connected_users_size; i++) {
+            chatSendUserList(global_connected_users[i].socket_fd);
+        }
         return;
     }
 
