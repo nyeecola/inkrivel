@@ -25,6 +25,7 @@ class AccountsController < ApplicationController
   # POST /accounts.json
   def create
     @account = Account.new(account_params)
+    @account.game_account = GameAccount.create
 
     respond_to do |format|
       if @account.save
