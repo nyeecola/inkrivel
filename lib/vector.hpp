@@ -1,4 +1,5 @@
 #pragma once
+
 #include <math.h>
 
 // Vector code modified from: http://www.flipcode.com/archives/Moving_Sphere_VS_Triangle_Collision.shtml

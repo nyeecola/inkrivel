@@ -1,7 +1,9 @@
 #pragma once
 
 #include <GL/gl.h>
+#include <SDL2/SDL.h>
 #include "vector.hpp"
+#include "config.hpp"
 
 class Quat {
     public:
@@ -52,3 +54,9 @@ enum FaceType {
     VERTEX_ALL
 };
 
+class Models {
+public:
+	Model character[AVAILABLE_CHARACTERS];
+	Model map;
+	// TODO : Modelo dos projéteis
+};
