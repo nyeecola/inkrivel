@@ -176,7 +176,12 @@ int main(int argc, char **argv) {
     char password[50] = {0};
     char buffer[MAX_MSG_LEN] = {0};
 
+    char new_username[20] = {0};
+    char new_password[50] = {0};
+    char new_email[50] = {0};
+
     bool logged = false;
+    bool new_account = false;
     int selectedName = -1;
     while (!glfwWindowShouldClose(window)) {
         if (global_message_history_size == 1000) {
@@ -206,8 +211,32 @@ int main(int argc, char **argv) {
             ImGui::Begin("Login");
             {
                 ImGui::InputText("Username", username, sizeof(username));
-                if (ImGui::InputText("Password", password, sizeof(password), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_Password)) {
-                    logged = true;
+                bool text_return = ImGui::InputText("Password", password, sizeof(password), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_Password);
+                ImGui::Separator();
+                bool button_return = ImGui::Button("Login", ImVec2(ImGui::GetWindowContentRegionWidth(), 0));
+                if (text_return || button_return) {
+                    if (strlen(username) && strlen(password)) {
+                        //TODO: Comunicate with database
+                        logged = true;
+                    }
+                }
+
+                if (ImGui::Button("Sign up", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) new_account = !new_account;
+
+                if (new_account) {
+                    ImGui::SetNextWindowSize(ImVec2(0, 0));
+                    ImGui::Begin("Sign Up");
+
+                    ImGui::InputText("Username", new_username, sizeof(new_username));
+                    ImGui::InputText("Password", new_password, sizeof(new_password), ImGuiInputTextFlags_Password);
+                    ImGui::InputText("E-Mail", new_email, sizeof(new_email));
+                    ImGui::Separator();
+                    if (ImGui::Button("Create", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+                        //TODO: Comunicate with database
+                        new_account = false;
+                        memcpy(username, new_username, sizeof(username));
+                    }
+                    ImGui::End();
                 }
             }
             ImGui::End();
@@ -277,10 +306,21 @@ int main(int argc, char **argv) {
                     ImGui::RadioButton("4 Players", &radioPressed, 0);
                     ImGui::RadioButton("6 Players", &radioPressed, 1);
                     ImGui::RadioButton("8 Players", &radioPressed, 2);
+
+                    ImGui::Separator();
+
+                    static int charPick = 0;
+                    ImGui::RadioButton("Assault", &charPick, 0);
+                    ImGui::RadioButton("Bucket", &charPick, 1);
+                    ImGui::RadioButton("Roll", &charPick, 2);
+                    ImGui::RadioButton("Sniper", &charPick, 3);
                     ImGui::Separator();
 
                     if (ImGui::Button("Play", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
-                        assert(execvp("../game/runner", 0) >= 0);
+                        Mix_HaltMusic();
+                        Mix_FreeMusic(music);
+                        Mix_CloseAudio();
+                        assert(execvp("../game_client/bin/game_client", 0) >= 0);
                     }
                 }
                 ImGui::End();

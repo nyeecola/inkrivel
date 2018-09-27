@@ -1,7 +1,7 @@
 #pragma once
 
-#define SCREEN_WIDTH 800
-#define SCREEN_HEIGHT 600
+#define SCREEN_WIDTH 1280
+#define SCREEN_HEIGHT 720
 #define AVAILABLE_CHARACTERS 4
 #define DEBUG 0
 #define ERROR -1
