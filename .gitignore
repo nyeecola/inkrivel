@@ -1,2 +1,6 @@
-build
-runner
+chat/bin
+game_client/bin
+game_server/bin
+lobby/bin
+imgui.ini
+lobby/imgui.ini
