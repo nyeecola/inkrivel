@@ -14,37 +14,37 @@ class Quat {
 };
 
 class Normal {
-public:
-    float x;
-    float y;
-    float z;
+    public:
+        float x;
+        float y;
+        float z;
 };
 
 class TextureCoord {
-public:
-    float x;
-    float y;
+    public:
+        float x;
+        float y;
 };
 
 class Face {
-public:
-    int vertices[3];
-    int normals[3];
-    int texture_coords[3];
+    public:
+        int vertices[3];
+        int normals[3];
+        int texture_coords[3];
 };
 
 class Model {
-public:
-    Vector *vertices;
-    int num_vertices;
-    Face *faces;
-    int num_faces;
-    Normal *normals;
-    int num_normals;
-    TextureCoord *texture_coords;
-    int num_texture_coords;
-    GLuint texture_id;
-    SDL_Surface *texture_image;
+    public:
+        Vector *vertices;
+        int num_vertices;
+        Face *faces;
+        int num_faces;
+        Normal *normals;
+        int num_normals;
+        TextureCoord *texture_coords;
+        int num_texture_coords;
+        GLuint texture_id;
+        SDL_Surface *texture_image;
 };
 
 enum FaceType {
@@ -55,8 +55,7 @@ enum FaceType {
 };
 
 class Models {
-public:
-	Model character[AVAILABLE_CHARACTERS];
-	Model map;
-	// TODO : Modelo dos projéteis
+    public:
+        Model character[AVAILABLE_CHARACTERS];
+        Model map;
 };

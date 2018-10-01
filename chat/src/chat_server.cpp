@@ -133,7 +133,7 @@ void handleNewMessage(int *index, pollfd *sockets_to_poll, int *size) {
 
     printf("New message from socket %d\n", socket_fd);
 
-    // TODO: maybe read multiple packets together
+    // NOTE: only reads one packet at a time
     Packet p;
     int received = receivePacket(socket_fd, &p);
 
