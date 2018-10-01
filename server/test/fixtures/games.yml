@@ -1,0 +1,15 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  map: one
+  room_size: MyString
+  integer: MyString
+  state: MyString
+  string: MyString
+
+two:
+  map: two
+  room_size: MyString
+  integer: MyString
+  state: MyString
+  string: MyString

@@ -23,4 +23,8 @@ class Account < ApplicationRecord
     valid
   end
 
+
+  def active_game_player
+    GamePlayer.where(game_account: game_account, state: %w(waiting starting playing)).first
+  end
 end

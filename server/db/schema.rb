@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2018_09_23_145158) do
+ActiveRecord::Schema.define(version: 2018_09_25_002253) do
 
   create_table "accounts", force: :cascade do |t|
     t.string "user"
@@ -45,6 +45,26 @@ ActiveRecord::Schema.define(version: 2018_09_23_145158) do
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_game_accounts_on_account_id"
     t.index ["character_id"], name: "index_game_accounts_on_character_id"
+  end
+
+  create_table "game_players", force: :cascade do |t|
+    t.integer "game_id"
+    t.integer "game_account_id"
+    t.string "state"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["game_account_id"], name: "index_game_players_on_game_account_id"
+    t.index ["game_id"], name: "index_game_players_on_game_id"
+  end
+
+  create_table "games", force: :cascade do |t|
+    t.integer "map_id"
+    t.integer "room_size"
+    t.string "state"
+    t.string "string"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["map_id"], name: "index_games_on_map_id"
   end
 
   create_table "maps", force: :cascade do |t|
