@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
     models.character[3] = loadWavefrontModel("../assets/slime.obj", "../assets/slime.png", VERTEX_ALL);
     models.map = loadWavefrontModel("../assets/map7.obj", "../assets/map.png", VERTEX_ALL);
 
-    // TODO : MUST BE INITIALIZED PROPERLY
+    // TODO: MUST BE INITIALIZED PROPERLY
     InputPacket input = {0};
     input.player_id = my_id;
     DrawPacket draw = {0};
@@ -86,8 +86,20 @@ int main(int argc, char **argv) {
         {
             int int_mouse_x, int_mouse_y;
             SDL_GetMouseState(&int_mouse_x, &int_mouse_y);
-            input.mouse_x = int_mouse_x;
-            input.mouse_y = int_mouse_y;
+            float mouse_x = int_mouse_x;
+            float mouse_y = int_mouse_y;
+            float mouse_angle;
+            {
+                mouse_x -= SCREEN_WIDTH/2;
+                mouse_y -= SCREEN_HEIGHT/2;
+                float norm = sqrt(mouse_x * mouse_x + mouse_y * mouse_y);
+                mouse_x /= norm;
+                mouse_y /= norm;
+                mouse_angle = atan2(mouse_y, mouse_x) * 180 / M_PI;
+                mouse_angle += 90;
+                mouse_angle *= -1;
+            }
+            input.mouse_angle = mouse_angle;
         }
         input.foward = kb_state[SDL_SCANCODE_W];
         input.back = kb_state[SDL_SCANCODE_S];
@@ -124,7 +136,7 @@ int main(int argc, char **argv) {
 
         // TODO: fix this
         // apply paint
-        paintCircle(models.map, draw.map_scale, &models.map.faces[draw.paint_face], draw.paint_max_z, draw.paint_radius, 0x1F, 0xFF, 0x1F);
+        paintCircle(models.map, MAP_SCALE, &models.map.faces[draw.paint_face], draw.paint_max_z, draw.paint_radius, 0x1F, 0xFF, 0x1F);
 
         // render
         glClearColor(0.4, 0.6, 1, 1);
@@ -171,7 +183,7 @@ int main(int argc, char **argv) {
             glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
             glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
             glPushMatrix();
-            glScalef(draw.map_scale, draw.map_scale, draw.map_scale);
+            glScalef(MAP_SCALE, MAP_SCALE, MAP_SCALE);
             drawModel(models.map);
             glPopMatrix();
         }
@@ -198,7 +210,13 @@ int main(int argc, char **argv) {
                           draw.rotations[i].y,
                           draw.rotations[i].z);
                 glRotatef(draw.mouse_angle[i], 0, 0, 1);
-                glScalef(0.2, 0.2, 0.2); // TODO: fix these numbers
+                switch (draw.model_id[i]) {
+                    case TEST:
+                        glScalef(TEST_SCALE);
+                        break;
+                    default:
+                        assert(false);
+                }
                 drawModel(models.character[draw.model_id[i]]);
                 glPopMatrix();
 

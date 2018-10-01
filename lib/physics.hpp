@@ -114,4 +114,93 @@ void barycentric(Vector p, Vector a, Vector b, Vector c, float &u, float &v, flo
     u = 1.0f - v - w;
 }
 
+void collidesWithMap(Map map, Character& player, Vector& normal_sum, Vector& max_z, Vector& paint_max_z, int& paint_face) {
+    Vector next_pos = player.pos + player.dir;
+    Vector rotation_points[4] = {{-200, -200, -200}, {-200, -200, -200},
+                                 {-200, -200, -200}, {-200, -200, -200}};
+    Vector rotation_normals[4] = {{-200, -200, -200}, {-200, -200, -200},
+                                  {-200, -200, -200}, {-200, -200, -200}};
+
+    for (int i = 0; i < map.model.num_faces; i++) {
+        Face *cur = &map.model.faces[i];
+
+        Vector vertex0 = map.scale * map.model.vertices[cur->vertices[0]];
+        Vector vertex1 = map.scale * map.model.vertices[cur->vertices[1]];
+        Vector vertex2 = map.scale * map.model.vertices[cur->vertices[2]];
+
+        Vector v1 = vertex2 - vertex0;
+        Vector v2 = vertex1 - vertex0;
+        Vector normal = v1.cross(v2);
+        normal.normalize();
+        if (normal.z < 0) {
+            normal = normal * -1;
+        }
+
+        Vector up = {0, 0, 1};
+
+        float cosine = normal.dot(up);
+
+        float angle = acos(cosine) * 180 / M_PI;
+
+        // walls
+        if (angle > 60 &&
+                (vertex0.z > next_pos.z ||
+                 vertex1.z > next_pos.z ||
+                 vertex2.z > next_pos.z)) {
+            bool collides = sphereCollidesTriangle(next_pos,
+                    player.hit_radius,
+                    vertex0, vertex1, vertex2);
+
+            if (collides) {
+                Vector v = player.pos - vertex0;
+                float d = v.dot(normal);
+                Vector collision = d*normal;
+
+                Vector reaction_v = player.dir + collision;
+                player.dir.x = reaction_v.x * player.dir.x > 0 ? reaction_v.x : 0;
+                player.dir.y = reaction_v.y * player.dir.y > 0 ? reaction_v.y : 0;
+                player.dir.z = reaction_v.z * player.dir.z > 0 ? reaction_v.z : 0;
+            }
+        }
+
+        // floors
+        else {
+            Vector sky[4];
+            sky[0] = {player.pos.x + player.hit_radius, player.pos.y, 200};
+            sky[1] = {player.pos.x - player.hit_radius, player.pos.y, 200};
+            sky[2] = {player.pos.x, player.pos.y + player.hit_radius, 200};
+            sky[3] = {player.pos.x, player.pos.y - player.hit_radius, 200};
+
+            Vector ground = {0, 0, -1};
+
+            Vector intersect_v;
+            for (int j = 0; j < 4; j++) {
+                bool intersect = rayIntersectsTriangle(map, sky[j], ground, cur, intersect_v);
+                if (intersect) {
+                    if (max_z.z < intersect_v.z) {
+                        max_z = intersect_v;
+                    }
+
+                    if (rotation_points[j].z < intersect_v.z) {
+                        rotation_points[j] = intersect_v;
+                        rotation_normals[j] = normal;
+                    }
+                }
+            }
+
+            // DEBUG: this makes the slime paint the ground where it walks
+            Vector sky_slime = {player.pos.x, player.pos.y, 200};
+            bool intersect = rayIntersectsTriangle(map, sky_slime, ground,
+                    cur, intersect_v);
+            if (intersect && intersect_v.z > paint_max_z.z) {
+                paint_max_z = intersect_v;
+                paint_face = i;
+            }
+        }
+    }
+    for (int j = 0; j < 4; j++) {
+        normal_sum += rotation_normals[j];
+    }
+    normal_sum.normalize();
+}
 

@@ -44,14 +44,14 @@ void makeFrustum (double fov_y, double aspect_ratio, double front, double back) 
 Model loadWavefrontModel(const char *obj_filename, const char *texture_filename, FaceType face_type) {
     Model model = {};
 
-    // TODO: fix these numbers
-    model.vertices = (Vector *) malloc(100000 * sizeof(Vector));
-    model.faces = (Face *) malloc(100000 * sizeof(Face));
-    model.normals = (Normal *) malloc(100000 * sizeof(Normal));
-    model.texture_coords = (TextureCoord *) malloc(100000 * sizeof(TextureCoord));
+    // NOTE: Objects bigger than the constants are undefined behavior
+    model.vertices = (Vector *) malloc(MAX_OBJ_VERTICES * sizeof(Vector));
+    model.faces = (Face *) malloc(MAX_OBJ_FACES * sizeof(Face));
+    model.normals = (Normal *) malloc(MAX_OBJ_VERTICES * sizeof(Normal));
+    model.texture_coords = (TextureCoord *) malloc(MAX_OBJ_VERTICES * sizeof(TextureCoord));
 
     if (face_type == VERTEX_ALL || face_type == VERTEX_TEXTURE) {
-        // TODO: do we need to free this? For the map be careful, because we need the pointer
+        // NOTE: this can be freed if it`s not a map model
         SDL_Surface *sur = IMG_Load(texture_filename);
         assert(sur);
         glGenTextures(1, &model.texture_id);
@@ -92,7 +92,8 @@ Model loadWavefrontModel(const char *obj_filename, const char *texture_filename,
                 fscanf(f, " %d//%d %d//%d %d//%d", &face.vertices[0], &face.normals[0], &face.vertices[1],
                                                    &face.normals[1], &face.vertices[2], &face.normals[2]);
             } else if (face_type == VERTEX_TEXTURE) {
-                // TODO
+                // NOTE: not supported
+                assert(false);
             } else if (face_type == VERTEX_ALL) {
                 fscanf(f, " %d/%d/%d %d/%d/%d %d/%d/%d", &face.vertices[0], &face.texture_coords[0],
                                                          &face.normals[0], &face.vertices[1],

@@ -28,8 +28,7 @@ typedef struct sockaddr sockaddr;
 
 typedef struct {
     uint8_t player_id;
-    float mouse_x;
-    float mouse_y;
+    float mouse_angle;
     bool foward;
     bool back;
     bool right;
@@ -43,9 +42,8 @@ typedef struct {
     bool online[MAX_PLAYERS];
     Vector pos[MAX_PLAYERS];
     float mouse_angle[MAX_PLAYERS];
-    uint8_t model_id[MAX_PLAYERS];
+    CharacterId model_id[MAX_PLAYERS];
     Quat rotations[MAX_PLAYERS];
-    float map_scale;
 
     // TODO: fix this
     bool paint;
@@ -53,7 +51,6 @@ typedef struct {
     Vector paint_max_z;
     float paint_radius;
 } DrawPacket;
-
 
 int createUDPSocket() {
 
@@ -65,7 +62,7 @@ int createUDPSocket() {
     }
 
    fcntl(file_descriptor, F_SETFL, O_NONBLOCK);
-    
+
     return file_descriptor;
 }
 
@@ -82,7 +79,7 @@ sockaddr_in initializeServerAddr() {
 
 
 sockaddr_in InitializeClientAddr(hostent *server_raw_address) {
- 
+
     sockaddr_in server_address = {0};
     server_address.sin_family = AF_INET;
     server_address.sin_port = htons(SERVER_PORT);
