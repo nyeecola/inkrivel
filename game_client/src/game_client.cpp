@@ -14,7 +14,6 @@
 #define MAX(a, b) ((a) > (b) ? a : b)
 #define MIN(a, b) ((a) < (b) ? a : b)
 
-
 int main(int argc, char **argv) {
 
     int my_id;
@@ -157,7 +156,7 @@ int main(int argc, char **argv) {
 
         // draw map
         {
-#if 1
+#if 0
             GLfloat mat_ambient[] = { 0.24, 0.20, 0.075, 1.0 };
             GLfloat mat_diffuse[] = { 0.75, 0.6, 0.22, 1.0 };
             GLfloat mat_specular[] = { 0.6282, 0.556, 0.366, 1.0 };
