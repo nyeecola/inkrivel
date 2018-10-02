@@ -19,6 +19,8 @@
 
 #include "../chat/src/chat_client.cpp"
 
+#include <curl/curl.h>
+
 #define MAX_MSG_LEN (100 + 20)
 
 static void GlfwErrorCallback(int error, const char* description) {
@@ -126,6 +128,14 @@ void *listenServer(void *arg) {
     return NULL;
 }
 
+size_t response(void *ptr, size_t size, size_t nmemb, void *stream){
+    int *id = (int *) stream;
+
+    sscanf((const char *) ptr, "{\"id\":%d}", id);
+
+    return size*nmemb;
+}
+
 void setGuiStyle() {
     ImGuiStyle * style = &ImGui::GetStyle();
 
@@ -229,6 +239,11 @@ int main(int argc, char **argv) {
         Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 2, 4096);
     }
 
+    CURL *curl;
+    curl_global_init(CURL_GLOBAL_ALL);
+    curl = curl_easy_init();
+    assert(curl);
+
     double LastTime = glfwGetTime();
     double DeltaTime = 0, NowTime = 0;
     double TimeSinceUpdate = 0;
@@ -246,6 +261,10 @@ int main(int argc, char **argv) {
     char new_email[50] = {0};
 
     bool logged = false;
+    int login_id = -1;
+
+    bool waiting_to_play = false;
+
     bool new_account = false;
     int selectedName = -1;
     while (!glfwWindowShouldClose(window)) {
@@ -285,8 +304,25 @@ int main(int argc, char **argv) {
                 bool button_return = ImGui::Button("Login", ImVec2(ImGui::GetWindowContentRegionWidth(), 0));
                 if (text_return || button_return) {
                     if (strlen(username) && strlen(password)) {
-                        //TODO: Comunicate with database
-                        logged = true;
+                        char data[100];
+                        sprintf(data, "{ \"user\": \"%s\", \"password\": \"%s\" }", username, password);
+
+                        struct curl_slist *hs=NULL;
+                        hs = curl_slist_append(hs, "Content-Type: application/json");
+                        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hs);
+                        curl_easy_setopt(curl, CURLOPT_URL, "177.220.84.50:3000/accounts/connect");
+                        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
+                        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, response);
+                        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &login_id);
+
+                        CURLcode res = curl_easy_perform(curl);
+                        if (res != CURLE_OK) printf("Failed to request login\n");
+
+                        long http_code = 0;
+                        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+                        if (http_code == 200) {
+                            logged = true;
+                        }
                     }
                 }
 
@@ -301,9 +337,31 @@ int main(int argc, char **argv) {
                     ImGui::InputText("E-Mail", new_email, sizeof(new_email));
                     ImGui::Separator();
                     if (ImGui::Button("Create", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
-                        //TODO: Comunicate with database
-                        new_account = false;
-                        memcpy(username, new_username, sizeof(username));
+                        if (strlen(new_username) && strlen(new_password) && strlen(new_email)) {
+                            char data[100];
+                            sprintf(data, "{ \"account\": {"
+                                    "\"user\":\"%s\","
+                                    "\"password\": \"%s\","
+                                    "\"email\": \"%s\","
+                                    "\"nickname\": \"%s\" } }",
+                                    new_username, new_password, new_email, new_username);
+
+                            struct curl_slist *hs=NULL;
+                            hs = curl_slist_append(hs, "Content-Type: application/json");
+                            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hs);
+                            curl_easy_setopt(curl, CURLOPT_URL, "177.220.84.50:3000/accounts.json");
+                            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
+
+                            CURLcode res = curl_easy_perform(curl);
+                            if (res != CURLE_OK) printf("Failed to request signup\n");
+
+                            long http_code = 0;
+                            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+                            if (http_code == 201) {
+                                new_account = false;
+                                memcpy(username, new_username, sizeof(username));
+                            }
+                        }
                     }
                     ImGui::End();
                 }
@@ -385,11 +443,35 @@ int main(int argc, char **argv) {
                     ImGui::RadioButton("Sniper", &charPick, 3);
                     ImGui::Separator();
 
-                    if (ImGui::Button("Play", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
-                        Mix_HaltMusic();
-                        Mix_FreeMusic(music);
-                        Mix_CloseAudio();
-                        assert(execvp("../game_client/bin/game_client", 0) >= 0);
+                    if (!waiting_to_play) {
+                        if (ImGui::Button("Play", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+                            char data[100];
+                            sprintf(data, "{"
+                                    "\"account_id\": \"%d\","
+                                    "\"room_size\": \"%d\" "
+                                    "}",
+                                    login_id, radioPressed*2 + 4);
+
+                            struct curl_slist *hs=NULL;
+                            hs = curl_slist_append(hs, "Content-Type: application/json");
+                            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hs);
+                            curl_easy_setopt(curl, CURLOPT_URL, "177.220.84.50:3000/games/join");
+
+                            CURLcode res = curl_easy_perform(curl);
+                            if (res != CURLE_OK) printf("Failed to request join\n");
+
+                            long http_code = 0;
+                            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+                            if (http_code == 200) {
+                                waiting_to_play = true;
+                            }
+#if 0
+                            Mix_HaltMusic();
+                            Mix_FreeMusic(music);
+                            Mix_CloseAudio();
+                            assert(execvp("../game_client/bin/game_client", 0) >= 0);
+#endif
+                        }
                     }
                 }
                 ImGui::End();
@@ -435,6 +517,9 @@ int main(int argc, char **argv) {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+
+    if (curl) curl_easy_cleanup(curl);
+    curl_global_cleanup();
 
     glfwDestroyWindow(window);
     glfwTerminate();
