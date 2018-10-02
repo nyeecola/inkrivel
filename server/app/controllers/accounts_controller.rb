@@ -25,7 +25,7 @@ class AccountsController < ApplicationController
   # POST /accounts.json
   def create
     @account = Account.new(account_params)
-    @account.game_account = GameAccount.create
+    @account.game_account = GameAccount.new
 
     respond_to do |format|
       if @account.save
@@ -66,7 +66,7 @@ class AccountsController < ApplicationController
     @account = Account.find_by_user(params[:user])
 
     respond_to do |format|
-      if @account.connect(params[:password])
+      if @account&.connect(params[:password])
         format.json { render json: { id: @account.id } }
       else
         format.json { head :unauthorized }
