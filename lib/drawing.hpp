@@ -158,7 +158,7 @@ void drawSphere(Vector center, float radius) {
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
     glPushMatrix();
-    glTranslatef(center.x, center.y, 0.2);
+    glTranslatef(center.x, center.y, center.z);
     //glRotatef(mouse_angle, 0, 0, 1);
     //glScalef(0.2, 0.2, 0.2);
     for (float alpha = 0.0; alpha < M_PI; alpha += M_PI/gradation) {

@@ -134,9 +134,15 @@ int main(int argc, char **argv) {
             }
         }
 
-        // TODO: fix this
         // apply paint
-        paintCircle(models.map, MAP_SCALE, &models.map.faces[draw.paint_face], draw.paint_max_z, draw.paint_radius, 0x1F, 0xFF, 0x1F);
+        // TODO: be careful with order of packets
+        for (uint32_t i = 0; i < draw.num_paint_points; i++) {
+            //printf("i %d\n", i);
+            paintCircle(models.map, MAP_SCALE,
+                        &models.map.faces[draw.paint_points_faces[i]],
+                        draw.paint_points_pos[i], draw.paint_points_radius[i],
+                        0x1F, 0xFF, 0x1F);
+        }
 
         // render
         glClearColor(0.4, 0.6, 1, 1);
@@ -188,6 +194,11 @@ int main(int argc, char **argv) {
             glPopMatrix();
         }
 
+        // draw projectiles
+        for (uint32_t i = 0; i < draw.num_projectiles; i++) {
+            drawSphere(draw.projectiles_pos[i], draw.projectiles_radius[i]);
+        }
+
         glClear(GL_DEPTH_BUFFER_BIT);
 
         // draw slimes
@@ -220,7 +231,6 @@ int main(int argc, char **argv) {
                 drawModel(models.character[draw.model_id[i]]);
                 glPopMatrix();
 
-                drawSphere(draw.pos[i], 0.25);
 #if DEBUG
                 // TODO: make this code work client side
                 // draw slime hitsphere

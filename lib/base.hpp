@@ -18,3 +18,11 @@ public:
     float hit_radius;
     Model model;
 };
+
+class Projectile {
+public:
+    Vector pos;
+    Vector dir;
+    float radius;
+    float speed;
+};
