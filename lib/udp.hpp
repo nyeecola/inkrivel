@@ -29,8 +29,8 @@ typedef struct sockaddr sockaddr;
 typedef struct {
     uint8_t player_id;
     float mouse_angle;
-    bool foward;
-    bool back;
+    bool up;
+    bool down;
     bool right;
     bool left;
     bool shooting;
