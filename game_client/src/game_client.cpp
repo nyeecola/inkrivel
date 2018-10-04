@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
     models.character[1] = loadWavefrontModel("../assets/slime.obj", "../assets/slime.png", VERTEX_ALL);
     models.character[2] = loadWavefrontModel("../assets/slime.obj", "../assets/slime.png", VERTEX_ALL);
     models.character[3] = loadWavefrontModel("../assets/slime.obj", "../assets/slime.png", VERTEX_ALL);
-    models.map = loadWavefrontModel("../assets/map7.obj", "../assets/map.png", VERTEX_ALL);
+    models.map = loadWavefrontModel("../assets/map7.obj", "../assets/map2.png", VERTEX_ALL);
 
     // TODO: MUST BE INITIALIZED PROPERLY
     InputPacket input = {0};
@@ -101,8 +101,8 @@ int main(int argc, char **argv) {
             }
             input.mouse_angle = mouse_angle;
         }
-        input.foward = kb_state[SDL_SCANCODE_W];
-        input.back = kb_state[SDL_SCANCODE_S];
+        input.up = kb_state[SDL_SCANCODE_W];
+        input.down = kb_state[SDL_SCANCODE_S];
         input.right = kb_state[SDL_SCANCODE_D];
         input.left = kb_state[SDL_SCANCODE_A];
         input.especial = kb_state[SDL_SCANCODE_E];
@@ -115,8 +115,8 @@ int main(int argc, char **argv) {
         } else {
 #if 0
             printf("mouse_X, mouse_Y = %f %f\n", input.mouse_x, input.mouse_y);
-            //if (input.foward) printf("W"); else printf(" ");
-            //if (input.back) printf("S"); else printf(" ");
+            //if (input.up) printf("W"); else printf(" ");
+            //if (input.down) printf("S"); else printf(" ");
             //if (input.right) printf("D"); else printf(" ");
             //if (input.left) printf("A"); else printf(" ");
             //if (input.shooting) printf("L"); else printf(" ");
@@ -220,6 +220,7 @@ int main(int argc, char **argv) {
                 drawModel(models.character[draw.model_id[i]]);
                 glPopMatrix();
 
+                drawSphere(draw.pos[i], 0.25);
 #if DEBUG
                 // TODO: make this code work client side
                 // draw slime hitsphere

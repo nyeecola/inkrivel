@@ -147,7 +147,7 @@ void drawModel(Model model) {
 // Base for sphere code:
 // https://stackoverflow.com/questions/7687148/drawing-sphere-in-opengl-without-using-glusphere
 void drawSphere(Vector center, float radius) {
-    int gradation = 10;
+    int gradation = 30;
 
     GLfloat mat_ambient[] = { 0.4, 0.0, 0.0, 1.0 };
     GLfloat mat_diffuse[] = { 1.0, 0.1, 0.1, 1.0 };
@@ -167,10 +167,16 @@ void drawSphere(Vector center, float radius) {
             float x = radius*cos(beta)*sin(alpha);
             float y = radius*sin(beta)*sin(alpha);
             float z = radius*cos(alpha);
+            Vector norm(x,y,z);
+            norm.normalize();
+            glNormal3f(norm.x, norm.y, norm.z);
             glVertex3f(x, y, z);
             x = radius*cos(beta)*sin(alpha + M_PI/gradation);
             y = radius*sin(beta)*sin(alpha + M_PI/gradation);
             z = radius*cos(alpha + M_PI/gradation);
+            Vector norm2(x,y,z);
+            norm2.normalize();
+            glNormal3f(norm2.x, norm2.y, norm2.z);
             glVertex3f(x, y, z);
         }
         glEnd();

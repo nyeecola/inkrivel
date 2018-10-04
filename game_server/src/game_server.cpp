@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
     // Create map
     Map map;
     map.model = loadWavefrontModel("../assets/map7.obj",
-            "../assets/map.png",
+            "../assets/map2.png",
             VERTEX_ALL);
     map.scale = MAP_SCALE;
     for(int i = 0; i < MAX_PLAYERS; i++){
@@ -82,19 +82,23 @@ int main(int argc, char **argv) {
             // mouse position relative to the middle of the window
             draw.mouse_angle[id] = input.mouse_angle;
 
-            // move object in the direction of the mouse when W is pressed
+            // move object in the direction of the keys
             // TODO: use delta_time
-            if (input.foward) {
-                float mouse_angle = input.mouse_angle * -1;
-                mouse_angle -= 90;
-                player[id].dir.x = cos(mouse_angle * M_PI / 180);
-                player[id].dir.y = -sin(mouse_angle * M_PI / 180);
-                player[id].dir.normalize();
-                player[id].dir *= player[id].speed;
+            player[id].dir = {0, 0, 0};
+            if (input.down) {
+                player[id].dir.y -= 1;
             }
-            else {
-                player[id].dir = {0, 0, 0};
+            if (input.up) {
+                player[id].dir.y += 1;
             }
+            if (input.left) {
+                player[id].dir.x -= 1;
+            }
+            if (input.right) {
+                player[id].dir.x += 1;
+            }
+            player[id].dir.normalize();
+            player[id].dir *= player[id].speed;
 
             // collision
             Vector max_z = {0, 0, -200};
