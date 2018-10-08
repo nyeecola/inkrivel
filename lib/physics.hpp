@@ -114,6 +114,50 @@ void barycentric(Vector p, Vector a, Vector b, Vector c, float &u, float &v, flo
     u = 1.0f - v - w;
 }
 
+// returns true if collides
+// if returns false, paint_face and paint_pos have no meaning
+bool projectileCollidesWithMap(Map map, Projectile projectile, Vector& paint_pos, int& paint_face) {
+    bool intersects = false;
+
+    float min_intersection_mag = 100000000.0f;
+
+    for (int i = 0; i < map.model.num_faces; i++) {
+        Face *cur = &map.model.faces[i];
+
+        Vector vertex0 = map.scale * map.model.vertices[cur->vertices[0]];
+        Vector vertex1 = map.scale * map.model.vertices[cur->vertices[1]];
+        Vector vertex2 = map.scale * map.model.vertices[cur->vertices[2]];
+
+        Vector v1 = vertex2 - vertex0;
+        Vector v2 = vertex1 - vertex0;
+        Vector normal = v1.cross(v2);
+        normal.normalize();
+        if (normal.z < 0) {
+            normal = normal * -1;
+        }
+
+        Vector intersection;
+        bool intersect = rayIntersectsTriangle(map, projectile.pos,
+                                               projectile.dir + Vector(0, 0, -GRAVITY),
+                                               cur, intersection);
+        if (intersect) {
+            Vector tmp_v = intersection - projectile.pos;
+            float mag = tmp_v.len();
+            if (mag < projectile.speed) {
+                intersects = true;
+
+                if (mag < min_intersection_mag) {
+                    paint_pos = intersection;
+                    paint_face = i;
+                    min_intersection_mag = mag;
+                }
+            }
+        }
+    }
+
+    return intersects;
+}
+
 void collidesWithMap(Map map, Character& player, Vector& normal_sum, Vector& max_z, Vector& paint_max_z, int& paint_face) {
     Vector next_pos = player.pos + player.dir;
     Vector rotation_points[4] = {{-200, -200, -200}, {-200, -200, -200},

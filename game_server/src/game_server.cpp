@@ -3,7 +3,7 @@
 #include "../../lib/udp.hpp"
 #include "../../lib/drawing.hpp"
 
-#include "../../lib/character.hpp"
+#include "../../lib/base.hpp"
 #include "../../lib/map.hpp"
 //#include "base/character-test.cpp"
 
@@ -51,6 +51,9 @@ int main(int argc, char **argv) {
         map.characterList[i] = &player[i];
     }
 
+    int num_projectiles = 0;
+    Projectile projectiles[MAX_PROJECTILES] = {};
+
     for(ever) {
         sockaddr addr = {0};
         socklen_t len = sizeof(addr);
@@ -79,6 +82,9 @@ int main(int argc, char **argv) {
                 memcpy(&player_address[id], &addr, sizeof(sockaddr));
             }
 
+            // reset paint commands
+            draw.num_paint_points = 0;
+
             // mouse position relative to the middle of the window
             draw.mouse_angle[id] = input.mouse_angle;
 
@@ -97,6 +103,23 @@ int main(int argc, char **argv) {
             if (input.right) {
                 player[id].dir.x += 1;
             }
+            if (input.shooting) {
+                float mouse_angle = input.mouse_angle * -1;
+                mouse_angle -= 90;
+                Vector looking(0, 0, 0);
+                looking.x = cos(mouse_angle * M_PI / 180);
+                looking.y = -sin(mouse_angle * M_PI / 180);
+                looking.normalize();
+
+                assert(num_projectiles < MAX_PROJECTILES);
+                projectiles[num_projectiles].pos = player[id].pos + Vector(0, 0, 0.25);
+                // always shooting straight, z can be changed if that's not what you want
+                projectiles[num_projectiles].dir = looking;
+                projectiles[num_projectiles].radius = 0.04;
+                projectiles[num_projectiles].speed = 0.03;
+
+                num_projectiles++;
+            }
             player[id].dir.normalize();
             player[id].dir *= player[id].speed;
 
@@ -107,11 +130,10 @@ int main(int argc, char **argv) {
             int paint_face;
             collidesWithMap(map, player[id], normal_sum, max_z, paint_max_z, paint_face);
 
-            // TODO: fix this
-            draw.paint = true;
-            draw.paint_face = paint_face;
-            draw.paint_max_z = paint_max_z;
-            draw.paint_radius = 40;
+            draw.paint_points_pos[draw.num_paint_points] = paint_max_z;
+            draw.paint_points_faces[draw.num_paint_points] = paint_face;
+            draw.paint_points_radius[draw.num_paint_points] = 40; // TODO: fix this number
+            draw.num_paint_points++;
 
             // TODO: get this from lobby server
             for (int i = 0; i < MAX_PLAYERS; i++) {
@@ -125,6 +147,7 @@ int main(int argc, char **argv) {
             }
 
             // player movement
+            // TODO: use delta time
             {
                 if (player[id].dir.len() > player[id].speed) {
                     player[id].dir.normalize();
@@ -136,6 +159,45 @@ int main(int argc, char **argv) {
                 }
                 draw.pos[id] = player[id].pos;
             }
+
+            //printf("num projectiles %d\n", num_projectiles);
+
+            // projectile simulation
+            // TODO: gravity
+            // TODO: use delta time
+            for (int i = 0; i < num_projectiles; i++) {
+
+                // check collision
+                Vector paint_pos;
+                int paint_face;
+                bool collides = projectileCollidesWithMap(map, projectiles[i],
+                                                          paint_pos, paint_face);
+
+                if (collides) {
+                    draw.paint_points_pos[draw.num_paint_points] = paint_pos;
+                    draw.paint_points_faces[draw.num_paint_points] = paint_face;
+                    //draw.paint_points_radius[draw.num_paint_points] = projectiles[i].radius * projectiles[i].radius;
+                    draw.paint_points_radius[draw.num_paint_points] = 40;
+                    draw.num_paint_points++;
+
+                    for (int j = i; j < num_projectiles - 1; j++) {
+                        projectiles[j] = projectiles[j + 1];
+                    }
+                    num_projectiles--;
+                    i--;
+
+                    continue;
+                }
+                else {
+                    projectiles[i].dir += Vector(0, 0, -GRAVITY);
+                    projectiles[i].pos += projectiles[i].dir * projectiles[i].speed;
+                }
+
+                draw.projectiles_pos[i] = projectiles[i].pos;
+                draw.projectiles_radius[i] = projectiles[i].radius;
+            }
+
+            draw.num_projectiles = num_projectiles;
 
             for(int i = 0; i < MAX_PLAYERS ; i++) {
                 if ( online[i] ) {

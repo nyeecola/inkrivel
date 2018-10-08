@@ -54,11 +54,14 @@ typedef struct {
     CharacterId model_id[MAX_PLAYERS];
     Quat rotations[MAX_PLAYERS];
 
-    // TODO: fix this
-    bool paint;
-    uint32_t paint_face;
-    Vector paint_max_z;
-    float paint_radius;
+    uint32_t num_projectiles;
+    Vector projectiles_pos[MAX_PROJECTILES];
+    float projectiles_radius[MAX_PROJECTILES];
+
+    uint32_t num_paint_points;
+    Vector paint_points_pos[MAX_PAINT_POINTS];
+    uint32_t paint_points_faces[MAX_PAINT_POINTS];
+    float paint_points_radius[MAX_PAINT_POINTS];
 } DrawPacket;
 
 class PacketBuffer {

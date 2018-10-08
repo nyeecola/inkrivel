@@ -146,19 +146,19 @@ void drawModel(Model model) {
 
 // Base for sphere code:
 // https://stackoverflow.com/questions/7687148/drawing-sphere-in-opengl-without-using-glusphere
-void drawSphere(Vector center, float radius) {
+void drawSphere(Vector center, float radius, float r, float g, float b) {
     int gradation = 30;
 
-    GLfloat mat_ambient[] = { 0.4, 0.0, 0.0, 1.0 };
-    GLfloat mat_diffuse[] = { 1.0, 0.1, 0.1, 1.0 };
-    GLfloat mat_specular[] = { 1.0, 0.1, 0.1, 1.0 };
+    GLfloat mat_ambient[] = { r * 0.4f, g * 0.4f, b * 0.4f, 1.0 };
+    GLfloat mat_diffuse[] = { r * 1.0f, g * 1.0f, b * 1.0f, 1.0 };
+    GLfloat mat_specular[] = { r * 1.0f, g * 1.0f, b * 1.0f, 1.0 };
     GLfloat mat_shininess[] = { 1.0 };
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, mat_ambient);
     glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_diffuse);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
     glPushMatrix();
-    glTranslatef(center.x, center.y, 0.2);
+    glTranslatef(center.x, center.y, center.z);
     //glRotatef(mouse_angle, 0, 0, 1);
     //glScalef(0.2, 0.2, 0.2);
     for (float alpha = 0.0; alpha < M_PI; alpha += M_PI/gradation) {
