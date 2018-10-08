@@ -1,3 +1,5 @@
+#include <pthread.h>
+
 #include "../../lib/render-types.hpp"
 #include "../../lib/vector.hpp"
 #include "../../lib/udp.hpp"
@@ -7,27 +9,66 @@
 #include "../../lib/map.hpp"
 //#include "base/character-test.cpp"
 
-void bindAddressToSocket(sockaddr_in server_address, int socket_file_descriptor) {
+#define THREAD_MUTEX_DELAY 200
+#define MAX_INPUT_BUFFER_SIZE 200
+
+// milliseconds
+#define TICK_TIME 10
+
+void bindAddressToSocket(sockaddr_in server_address, int socket_fd) {
     sockaddr *addr = (sockaddr *) &server_address;
 
-    if (bind(socket_file_descriptor, addr, sizeof(server_address)) == ERROR) {
+    if (bind(socket_fd, addr, sizeof(server_address)) == ERROR) {
         fprintf(stderr, "ERROR: Could not bind file descriptor to socket. %s.\n",
                 strerror(errno));
         exit(1);
     }
 }
 
+sockaddr player_address[MAX_PLAYERS] = {0};
+sockaddr addr = {0};
+int socket_fd;
+int global_buffer_index = 0;
+PacketBuffer global_input_buffer[2] = { PacketBuffer(INPUT, MAX_INPUT_BUFFER_SIZE),
+                                        PacketBuffer(INPUT, MAX_INPUT_BUFFER_SIZE) };
+bool online[MAX_PLAYERS] = {0};
+// TODO: MUST BE INITIALIZED PROPERLY
+DrawPacket draw = {0};
+
+void *listenInputs(void *arg) {
+    for (ever) {
+        socklen_t len = sizeof(addr);
+
+        InputPacket input = {0};
+
+        if (recvfrom(socket_fd, &input, sizeof(input), 0, &addr, &len) != ERROR) {
+            printf("Buffer 0 size %d\n", global_input_buffer[0].packets);
+            printf("Buffer 1 size %d\n", global_input_buffer[1].packets);
+            puts("aa");
+
+            int success = global_input_buffer[global_buffer_index].insert(INPUT, &input);
+            assert(success);
+
+            // TODO: check if this is a good way to achive what we want
+            if (!online[input.player_id]) {
+                printf("Player %d connected.\n", input.player_id);
+                online[input.player_id] = true;
+                draw.online[input.player_id] = true;
+                memcpy(&player_address[input.player_id], &addr, sizeof(sockaddr));
+            }
+        } else {
+            if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                fprintf(stderr, "ERROR: Unespected error while recieving input packet. %s.\n", strerror(errno));
+                exit(1);
+            }
+        }
+    }
+}
+
 int main(int argc, char **argv) {
-    sockaddr player_address[MAX_PLAYERS] = {0};
-    bool online[MAX_PLAYERS] = {0};
-
-    int socket_file_descriptor = createUDPSocket();
+    socket_fd = createUDPSocket();
     sockaddr_in server_address = initializeServerAddr();
-    bindAddressToSocket(server_address, socket_file_descriptor);
-
-    // TODO: MUST BE INITIALIZED PROPERLY
-    InputPacket input = {0};
-    DrawPacket draw = {0};
+    bindAddressToSocket(server_address, socket_fd);
 
     printf("Server is up\n");
 
@@ -43,9 +84,7 @@ int main(int argc, char **argv) {
 
     // Create map
     Map map;
-    map.model = loadWavefrontModel("../assets/map7.obj",
-            "../assets/map2.png",
-            VERTEX_ALL);
+    map.model = loadWavefrontModel("../assets/map7.obj", "../assets/map2.png", VERTEX_ALL);
     map.scale = MAP_SCALE;
     for(int i = 0; i < MAX_PLAYERS; i++){
         map.characterList[i] = &player[i];
@@ -54,154 +93,154 @@ int main(int argc, char **argv) {
     int num_projectiles = 0;
     Projectile projectiles[MAX_PROJECTILES] = {};
 
+    {
+        pthread_t listener;
+        pthread_create(&listener, NULL, listenInputs, (void *) 0);
+    }
+
+    uint64_t last_time = getTimestamp();
+    uint64_t accumulated_time = 0;
+
     for(ever) {
-        sockaddr addr = {0};
-        socklen_t len = sizeof(addr);
+        uint64_t cur_time = getTimestamp();
+        uint64_t dt = cur_time - last_time; // TODO: maybe in seconds later in the future
+        last_time = cur_time;
 
-        if (recvfrom(socket_file_descriptor, &input, sizeof(input), 0, &addr, &len)
-                != ERROR) {
+        accumulated_time += dt;
 
-#if 0
-            printf("mouse_X, mouse_Y = %f %f\n", input.mouse_x, input.mouse_y);
-            // if (input.foward) printf("W"); else printf(" ");
-            // if (input.back) printf("S"); else printf(" ");
-            // if (input.right) printf("D"); else printf(" ");
-            // if (input.left) printf("A"); else printf(" ");
-            // if (input.shooting) printf("L"); else printf(" ");
-            // if (input.especial) printf("E"); else printf(" ");
-            // if (input.running) printf("R"); else printf(" ");
-            // printf("\n");
-#endif
+        // do tick
+        if (accumulated_time > TICK_TIME) {
+            global_buffer_index = !global_buffer_index;
+            usleep(THREAD_MUTEX_DELAY); // polite thread safety mechanism
 
-            uint8_t id = input.player_id;
+            while (global_input_buffer[!global_buffer_index].packets) {
+                int index = --global_input_buffer[!global_buffer_index].packets;
 
-            // TODO: check if this is a good way to achive what we want
-            if (!online[id]) {
-                online[id] = true;
-                draw.online[id] = true;
-                memcpy(&player_address[id], &addr, sizeof(sockaddr));
-            }
+                InputPacket input = global_input_buffer[!global_buffer_index].input_buffer[index];
 
-            // reset paint commands
-            draw.num_paint_points = 0;
+                uint8_t id = input.player_id;
 
-            // mouse position relative to the middle of the window
-            draw.mouse_angle[id] = input.mouse_angle;
+                // reset paint commands
+                draw.num_paint_points = 0;
 
-            // move object in the direction of the keys
-            // TODO: use delta_time
-            player[id].dir = {0, 0, 0};
-            if (input.down) {
-                player[id].dir.y -= 1;
-            }
-            if (input.up) {
-                player[id].dir.y += 1;
-            }
-            if (input.left) {
-                player[id].dir.x -= 1;
-            }
-            if (input.right) {
-                player[id].dir.x += 1;
-            }
-            if (input.shooting) {
-                float mouse_angle = input.mouse_angle * -1;
-                mouse_angle -= 90;
-                Vector looking(0, 0, 0);
-                looking.x = cos(mouse_angle * M_PI / 180);
-                looking.y = -sin(mouse_angle * M_PI / 180);
-                looking.normalize();
+                // mouse position relative to the middle of the window
+                draw.mouse_angle[id] = input.mouse_angle;
 
-                assert(num_projectiles < MAX_PROJECTILES);
-                projectiles[num_projectiles].pos = player[id].pos + Vector(0, 0, 0.25);
-                // always shooting straight, z can be changed if that's not what you want
-                projectiles[num_projectiles].dir = looking;
-                projectiles[num_projectiles].radius = 0.04;
-                projectiles[num_projectiles].speed = 0.03;
-
-                num_projectiles++;
-            }
-            player[id].dir.normalize();
-            player[id].dir *= player[id].speed;
-
-            // collision
-            Vector max_z = {0, 0, -200};
-            Vector normal_sum = {0, 0, 0};
-            Vector paint_max_z = {0, 0, -200};
-            int paint_face;
-            collidesWithMap(map, player[id], normal_sum, max_z, paint_max_z, paint_face);
-
-            draw.paint_points_pos[draw.num_paint_points] = paint_max_z;
-            draw.paint_points_faces[draw.num_paint_points] = paint_face;
-            draw.paint_points_radius[draw.num_paint_points] = 40; // TODO: fix this number
-            draw.num_paint_points++;
-
-            // TODO: get this from lobby server
-            for (int i = 0; i < MAX_PLAYERS; i++) {
-                draw.model_id[i] = TEST;
-            }
-
-            // rotation
-            {
-                player[id].rotation = getRotationQuat({0,0,1}, normal_sum);
-                draw.rotations[id] = player[id].rotation;
-            }
-
-            // player movement
-            // TODO: use delta time
-            {
-                if (player[id].dir.len() > player[id].speed) {
-                    player[id].dir.normalize();
-                    player[id].dir *= player[id].speed;
+                // move object in the direction of the keys
+                // TODO: use delta_time
+                player[id].dir = {0, 0, 0};
+                if (input.down) {
+                    player[id].dir.y -= 1;
                 }
-                player[id].pos += player[id].dir;
-                if (max_z.z > 0) {
-                    player[id].pos.z += 0.5*(max_z.z - player[id].pos.z);
+                if (input.up) {
+                    player[id].dir.y += 1;
                 }
-                draw.pos[id] = player[id].pos;
-            }
+                if (input.left) {
+                    player[id].dir.x -= 1;
+                }
+                if (input.right) {
+                    player[id].dir.x += 1;
+                }
+                if (input.shooting) {
+                    float mouse_angle = input.mouse_angle * -1;
+                    mouse_angle -= 90;
+                    Vector looking(0, 0, 0);
+                    looking.x = cos(mouse_angle * M_PI / 180);
+                    looking.y = -sin(mouse_angle * M_PI / 180);
+                    looking.normalize();
 
-            //printf("num projectiles %d\n", num_projectiles);
+                    assert(num_projectiles < MAX_PROJECTILES);
+                    projectiles[num_projectiles].pos = player[id].pos + Vector(0, 0, 0.25);
+                    // always shooting straight, z can be changed if that's not what you want
+                    projectiles[num_projectiles].dir = looking;
+                    projectiles[num_projectiles].radius = 0.04;
+                    projectiles[num_projectiles].speed = 0.03;
 
-            // projectile simulation
-            // TODO: gravity
-            // TODO: use delta time
-            for (int i = 0; i < num_projectiles; i++) {
+                    num_projectiles++;
+                }
+                player[id].dir.normalize();
+                player[id].dir *= player[id].speed;
 
-                // check collision
-                Vector paint_pos;
+                // collision
+                Vector max_z = {0, 0, -200};
+                Vector normal_sum = {0, 0, 0};
+                Vector paint_max_z = {0, 0, -200};
                 int paint_face;
-                bool collides = projectileCollidesWithMap(map, projectiles[i],
-                                                          paint_pos, paint_face);
+                collidesWithMap(map, player[id], normal_sum, max_z, paint_max_z, paint_face);
 
-                if (collides) {
-                    draw.paint_points_pos[draw.num_paint_points] = paint_pos;
-                    draw.paint_points_faces[draw.num_paint_points] = paint_face;
-                    //draw.paint_points_radius[draw.num_paint_points] = projectiles[i].radius * projectiles[i].radius;
-                    draw.paint_points_radius[draw.num_paint_points] = 40;
-                    draw.num_paint_points++;
+                draw.paint_points_pos[draw.num_paint_points] = paint_max_z;
+                draw.paint_points_faces[draw.num_paint_points] = paint_face;
+                draw.paint_points_radius[draw.num_paint_points] = 40; // TODO: fix this number
+                draw.num_paint_points++;
 
-                    for (int j = i; j < num_projectiles - 1; j++) {
-                        projectiles[j] = projectiles[j + 1];
+                // TODO: get this from lobby server
+                for (int i = 0; i < MAX_PLAYERS; i++) {
+                    draw.model_id[i] = TEST;
+                }
+
+                // rotation
+                {
+                    player[id].rotation = getRotationQuat({0,0,1}, normal_sum);
+                    draw.rotations[id] = player[id].rotation;
+                }
+
+                // player movement
+                // TODO: use delta time
+                {
+                    if (player[id].dir.len() > player[id].speed) {
+                        player[id].dir.normalize();
+                        player[id].dir *= player[id].speed;
                     }
-                    num_projectiles--;
-                    i--;
-
-                    continue;
-                }
-                else {
-                    projectiles[i].dir += Vector(0, 0, -GRAVITY);
-                    projectiles[i].pos += projectiles[i].dir * projectiles[i].speed;
+                    player[id].pos += player[id].dir;
+                    if (max_z.z > 0) {
+                        player[id].pos.z += 0.5*(max_z.z - player[id].pos.z);
+                    }
+                    draw.pos[id] = player[id].pos;
                 }
 
-                draw.projectiles_pos[i] = projectiles[i].pos;
-                draw.projectiles_radius[i] = projectiles[i].radius;
+                //printf("num projectiles %d\n", num_projectiles);
+
+                // projectile simulation
+                // TODO: gravity
+                // TODO: use delta time
+                for (int i = 0; i < num_projectiles; i++) {
+
+                    // check collision
+                    Vector paint_pos;
+                    int paint_face;
+                    bool collides = projectileCollidesWithMap(map, projectiles[i],
+                            paint_pos, paint_face);
+
+                    if (collides) {
+                        draw.paint_points_pos[draw.num_paint_points] = paint_pos;
+                        draw.paint_points_faces[draw.num_paint_points] = paint_face;
+                        //draw.paint_points_radius[draw.num_paint_points] = projectiles[i].radius * projectiles[i].radius;
+                        draw.paint_points_radius[draw.num_paint_points] = 40;
+                        draw.num_paint_points++;
+
+                        for (int j = i; j < num_projectiles - 1; j++) {
+                            projectiles[j] = projectiles[j + 1];
+                        }
+                        num_projectiles--;
+                        i--;
+
+                        continue;
+                    }
+                    else {
+                        projectiles[i].dir += Vector(0, 0, -GRAVITY);
+                        projectiles[i].pos += projectiles[i].dir * projectiles[i].speed;
+                    }
+
+                    draw.projectiles_pos[i] = projectiles[i].pos;
+                    draw.projectiles_radius[i] = projectiles[i].radius;
+                }
+
+                draw.num_projectiles = num_projectiles;
             }
 
-            draw.num_projectiles = num_projectiles;
-
-            for(int i = 0; i < MAX_PLAYERS ; i++) {
-                if ( online[i] ) {
-                    if ( sendto(socket_file_descriptor, &draw, sizeof(draw), 0, &player_address[i], sizeof(sockaddr)) != ERROR ) {
+            for(int i = 0; i < MAX_PLAYERS; i++) {
+                if (online[i]) {
+                    if ( sendto(socket_fd, &draw, sizeof(draw), 0, &player_address[i], sizeof(sockaddr)) != ERROR ) {
                         //printf("Pacote Draw %hu recebido.\n", draw.id);
                     } else {
                         if (errno != EAGAIN && errno != EWOULDBLOCK) {
@@ -211,15 +250,12 @@ int main(int argc, char **argv) {
                     }
                 }
             }
-        } else {
-            if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                fprintf(stderr, "ERROR: Unespected error while recieving input packet. %s.\n", strerror(errno));
-                exit(1);
-            }
+
+            accumulated_time -= TICK_TIME;
         }
     }
-    
-    close(socket_file_descriptor);
+
+    close(socket_fd);
 
     return 0;
 }

@@ -36,6 +36,7 @@ int main(int argc, char **argv) {
 
     // ignoring return value
     SDL_GL_CreateContext(window);
+    SDL_GL_SetSwapInterval(0);
 
     // OpenGL properties
     glEnable(GL_TEXTURE_2D);
@@ -107,6 +108,7 @@ int main(int argc, char **argv) {
         input.left = kb_state[SDL_SCANCODE_A];
         input.especial = kb_state[SDL_SCANCODE_E];
 
+#if 1
         if (sendto(socket_file_descriptor, &input, sizeof(input), 0, server_adapted_address, sizeof(server_address)) == ERROR) {
             if (errno != EAGAIN && errno != EWOULDBLOCK) {
                 fprintf(stderr, "ERROR: Unespected error while sending input packet. %s.\n", strerror(errno));
@@ -125,6 +127,7 @@ int main(int argc, char **argv) {
             //printf("\n");
 #endif
         }
+#endif
 
 
         if (recvfrom(socket_file_descriptor, &draw, sizeof(draw), 0, NULL, NULL) == ERROR) {
