@@ -15,6 +15,8 @@
 #include <arpa/inet.h>
 
 #include "config.hpp"
+#include "vector.hpp"
+#include "render-types.hpp"
 
 #define SERVER_ADDRESS "127.0.0.1"
 #define SERVER_PORT 27222
@@ -26,7 +28,13 @@ typedef struct hostent hostent;
 typedef struct sockaddr_in sockaddr_in;
 typedef struct sockaddr sockaddr;
 
+typedef enum {
+    INPUT,
+    DRAW
+} PacketType;
+
 typedef struct {
+    uint8_t frame;
     uint8_t player_id;
     float mouse_angle;
     bool up;
@@ -39,6 +47,7 @@ typedef struct {
 } InputPacket;
 
 typedef struct {
+    uint8_t frame;
     bool online[MAX_PLAYERS];
     Vector pos[MAX_PLAYERS];
     float mouse_angle[MAX_PLAYERS];
@@ -51,6 +60,162 @@ typedef struct {
     Vector paint_max_z;
     float paint_radius;
 } DrawPacket;
+
+class PacketBuffer {
+public:
+    InputPacket *input_buffer;
+    DrawPacket *draw_buffer;
+    uint8_t max_size;
+    uint8_t packets;
+
+    PacketBuffer(PacketType type, uint8_t max_size) {
+        this->max_size = max_size;
+        this->packets = 0;
+        this->draw_buffer = NULL;
+        this->input_buffer = NULL;
+        switch( type ) {
+            case INPUT:
+                input_buffer = (InputPacket*) malloc(sizeof(InputPacket) * max_size);
+                break;
+            
+            case DRAW:
+                draw_buffer = (DrawPacket*) malloc(sizeof(DrawPacket) * max_size);
+                break;
+            
+            default:
+                printf("Warning: Unespected packet type while creating object.\n");
+                break;
+        }
+    }
+
+    bool insert(PacketType type, void* packet) {
+        if ( this->packets == this->max_size ) {
+            return false;
+        }
+        else {
+            if ( type == DRAW && this->draw_buffer == NULL ){
+                printf("Can't insert draw packet to incompatible buffer type.\n");
+                return false;
+            }
+            if ( type == INPUT && this->input_buffer == NULL ){
+                printf("Can't insert input packet to incompatible buffer type.\n");
+                return false;
+            }
+            int i;
+            switch( type ) {
+                case INPUT: {
+                    InputPacket *in = (InputPacket*) packet;
+                    for(i = this->packets - 1; i >= 0; i--) {
+                        if ( this->input_buffer[i].frame < in->frame ) {
+                            this->input_buffer[i+1] = this->input_buffer[i];
+                        }
+                        else if ( this->input_buffer[i].frame == in->frame ) {
+                            printf("Two input packets with the same frame detected.\n");
+                            return false;
+                        }
+                        else {
+                            break;
+                        }
+                    }
+                    this->input_buffer[i+1] = *in;
+                    this->packets++;
+                    return true;
+                }
+                case DRAW: {
+                    DrawPacket *draw = (DrawPacket*) packet;
+                    for(i = this->packets - 1; i >= 0; i--) {
+                        if ( this->draw_buffer[i].frame < draw->frame ) {
+                            this->draw_buffer[i+1] = this->draw_buffer[i];
+                        }
+                        else if ( this->draw_buffer[i].frame == draw->frame ) {
+                            printf("Two draw packets with the same frame detected.\n");
+                            return false;
+                        }
+                        else {
+                            break;
+                        }
+                    }
+                    this->draw_buffer[i+1] = *draw;
+                    this->packets++;
+                    return true;
+                }
+                default: {
+                    printf("Warning: Unespected packet type while inserting.\n");
+                    return false;
+                }
+            }
+        }
+    }
+
+    InputPacket* getInByFrame(int frame) {
+        for(uint8_t i = 0; i < this->packets; i++) {
+            if ( this->input_buffer[i].frame == frame ) {
+                return &this->input_buffer[i];
+            }
+        }
+        return NULL;
+    }
+
+    DrawPacket* getDrawByFrame(int frame) {
+        for(uint8_t i = 0; i < this->packets; i++) {
+            if ( this->draw_buffer[i].frame == frame ) {
+                return &this->draw_buffer[i];
+            }
+        }
+        return NULL;
+    }
+
+    void removeOlderFramesThan(int frame) {
+        int removed = 0;
+        int i;
+        if ( this->input_buffer != NULL ) {
+            for (i = this->packets - 1; i >= 0; i--) {
+                if ( this->input_buffer[i].frame < frame ) {
+                    removed++;
+                } else {
+                    break;
+                }
+            }
+        }
+        if ( this->draw_buffer != NULL ) {
+            for (i = this->packets - 1; i >= 0; i--) {
+                if ( this->draw_buffer[i].frame < frame ) {
+                    removed++;
+                } else {
+                    break;
+                }
+            }
+        }
+        this->packets -= removed;
+    }
+
+    void printFrames() {
+        if ( this->input_buffer != NULL ) {
+            printf("INPUT: ");
+            for(int i = 0; i < this->packets; i++) {
+                printf("%d ", this->input_buffer[i].frame);
+            }
+            printf("\n");
+        }
+        if ( this->draw_buffer != NULL ) {
+            printf("DRAW: ");
+            for(int i = 0; i < this->packets; i++) {
+                printf("%d ", this->draw_buffer[i].frame);
+            }
+            printf("\n");
+        }
+    }
+
+    void destroy() {
+        if ( this->draw_buffer != NULL ) {
+            free(this->draw_buffer);
+        }
+        if ( this->input_buffer != NULL ) {
+            free(this->input_buffer);
+        }
+        //TODO: Caso inserir pacotes novos, destrua a fila associada aqui
+    }
+};
 
 int createUDPSocket() {
 
