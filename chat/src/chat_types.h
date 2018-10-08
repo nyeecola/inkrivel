@@ -40,7 +40,7 @@ void sendPacket(int socket_fd, Packet p) {
     free(buffer);
 }
 
-// TODO: caller must remember to free body_buffer
+// NOTE: caller must remember to free body_buffer
 int receivePacket(int socket_fd, Packet *p) {
     int n = read(socket_fd, &p->id, 1);
     if (n != 1) {

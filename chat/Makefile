@@ -1,9 +1,12 @@
 all: client server
 
-client:
+folder:
+	mkdir -p bin
+
+client: folder
 	g++ src/chat_client.cpp -o bin/chat_client -lpthread
 
-server:
+server: folder
 	g++ src/chat_server.cpp -o bin/chat_server -lpthread
 
 run_client: client

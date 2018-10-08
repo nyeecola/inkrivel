@@ -7,6 +7,9 @@
 #include "GL/gl3w.h"
 #include <GLFW/glfw3.h>
 
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_mixer.h>
+
 #include "imgui/imgui.cpp"
 #include "imgui/imgui_draw.cpp"
 #include "imgui/imgui_widgets.cpp"
@@ -15,6 +18,8 @@
 #include "imgui/imgui_impl_opengl3.cpp"
 
 #include "../chat/src/chat_client.cpp"
+
+#include <curl/curl.h>
 
 #define MAX_MSG_LEN (100 + 20)
 
@@ -123,6 +128,72 @@ void *listenServer(void *arg) {
     return NULL;
 }
 
+size_t response(void *ptr, size_t size, size_t nmemb, void *stream){
+    int *id = (int *) stream;
+
+    sscanf((const char *) ptr, "{\"id\":%d}", id);
+
+    return size*nmemb;
+}
+
+void setGuiStyle() {
+    ImGuiStyle * style = &ImGui::GetStyle();
+
+    style->WindowPadding = ImVec2(6, 6);
+    style->WindowRounding = 0.0f;
+    style->FramePadding = ImVec2(5, 5);
+    style->FrameRounding = 4.0f;
+    style->ItemSpacing = ImVec2(12, 8);
+    style->ItemInnerSpacing = ImVec2(8, 6);
+    style->IndentSpacing = 25.0f;
+    style->ScrollbarSize = 15.0f;
+    style->ScrollbarRounding = 9.0f;
+    style->GrabMinSize = 5.0f;
+    style->GrabRounding = 3.0f;
+
+    style->Colors[ImGuiCol_Text] = ImVec4(0.80f, 0.80f, 0.83f, 1.00f);
+    style->Colors[ImGuiCol_TextDisabled] = ImVec4(0.24f, 0.23f, 0.29f, 1.00f);
+    style->Colors[ImGuiCol_WindowBg] = ImVec4(0.16f, 0.15f, 0.17f, 1.00f);
+    style->Colors[ImGuiCol_ChildWindowBg] = ImVec4(0.07f, 0.07f, 0.09f, 1.00f);
+    style->Colors[ImGuiCol_PopupBg] = ImVec4(0.07f, 0.07f, 0.09f, 1.00f);
+    style->Colors[ImGuiCol_Border] = ImVec4(0.80f, 0.80f, 0.83f, 0.88f);
+    style->Colors[ImGuiCol_BorderShadow] = ImVec4(0.92f, 0.91f, 0.88f, 0.00f);
+    style->Colors[ImGuiCol_FrameBg] = ImVec4(0.10f, 0.09f, 0.12f, 1.00f);
+    style->Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.24f, 0.23f, 0.29f, 1.00f);
+    style->Colors[ImGuiCol_FrameBgActive] = ImVec4(0.56f, 0.56f, 0.8f, 1.00f);
+    style->Colors[ImGuiCol_TitleBg] = ImVec4(0.10f, 0.09f, 0.2f, 1.00f);
+    style->Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.40f, 0.45f, 0.98f, 0.75f);
+    style->Colors[ImGuiCol_TitleBgActive] = ImVec4(0.07f, 0.2f, 0.9f, 1.00f);
+    style->Colors[ImGuiCol_MenuBarBg] = ImVec4(0.10f, 0.09f, 0.12f, 1.00f);
+    style->Colors[ImGuiCol_ScrollbarBg] = ImVec4(0.10f, 0.09f, 0.12f, 1.00f);
+    style->Colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.80f, 0.80f, 0.83f, 0.31f);
+    style->Colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
+    style->Colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.06f, 0.05f, 0.07f, 1.00f);
+    style->Colors[ImGuiCol_CheckMark] = ImVec4(0.80f, 0.80f, 0.83f, 0.31f);
+    style->Colors[ImGuiCol_SliderGrab] = ImVec4(0.80f, 0.80f, 0.83f, 0.31f);
+    style->Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.06f, 0.05f, 0.07f, 1.00f);
+    style->Colors[ImGuiCol_Button] = ImVec4(0.10f, 0.09f, 0.5f, 1.00f);
+    style->Colors[ImGuiCol_ButtonHovered] = ImVec4(0.24f, 0.23f, 0.39f, 1.00f);
+    style->Colors[ImGuiCol_ButtonActive] = ImVec4(0.56f, 0.56f, 0.8f, 1.00f);
+    style->Colors[ImGuiCol_Header] = ImVec4(0.30f, 0.09f, 0.32f, 1.00f);
+    style->Colors[ImGuiCol_HeaderHovered] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
+    style->Colors[ImGuiCol_HeaderActive] = ImVec4(0.06f, 0.05f, 0.07f, 1.00f);
+    style->Colors[ImGuiCol_Column] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
+    style->Colors[ImGuiCol_ColumnHovered] = ImVec4(0.24f, 0.23f, 0.29f, 1.00f);
+    style->Colors[ImGuiCol_ColumnActive] = ImVec4(0.56f, 0.56f, 0.8f, 1.00f);
+    style->Colors[ImGuiCol_ResizeGrip] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    style->Colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
+    style->Colors[ImGuiCol_ResizeGripActive] = ImVec4(0.06f, 0.05f, 0.07f, 1.00f);
+    style->Colors[ImGuiCol_PlotLines] = ImVec4(0.40f, 0.39f, 0.38f, 0.63f);
+    style->Colors[ImGuiCol_PlotLinesHovered] = ImVec4(0.25f, 1.00f, 0.00f, 1.00f);
+    style->Colors[ImGuiCol_PlotHistogram] = ImVec4(0.40f, 0.39f, 0.38f, 0.63f);
+    style->Colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.25f, 1.00f, 0.00f, 1.00f);
+    style->Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.25f, 1.00f, 1.00f, 0.43f);
+    style->Colors[ImGuiCol_ModalWindowDarkening] = ImVec4(1.00f, 0.98f, 0.95f, 0.73f);
+
+    ImGuiIO& io = ImGui::GetIO();
+    //io.Fonts->AddFontFromFileTTF("../assets/Ruda-Bold.ttf", 18);
+}
 
 int main(int argc, char **argv) {
     // IMGUI / GLFW / OpenGL
@@ -155,16 +226,23 @@ int main(int argc, char **argv) {
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io;
-        // TODO
-        //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
 
         ImGui_ImplGlfw_InitForOpenGL(window, true);
         ImGui_ImplOpenGL3_Init(glsl_version);
 
         // Setup style
-        ImGui::StyleColorsDark();
+        //ImGui::StyleColorsDark();
         clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+        setGuiStyle();
+
+        SDL_Init(SDL_INIT_AUDIO);
+        Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 2, 4096);
     }
+
+    CURL *curl;
+    curl_global_init(CURL_GLOBAL_ALL);
+    curl = curl_easy_init();
+    assert(curl);
 
     double LastTime = glfwGetTime();
     double DeltaTime = 0, NowTime = 0;
@@ -172,11 +250,22 @@ int main(int argc, char **argv) {
 
     int socket_fd = -1;
 
+    Mix_Music *music = Mix_LoadMUS("../assets/lobby-bg-music.mp3");
+
     char username[20] = {0};
     char password[50] = {0};
     char buffer[MAX_MSG_LEN] = {0};
 
+    char new_username[20] = {0};
+    char new_password[50] = {0};
+    char new_email[50] = {0};
+
     bool logged = false;
+    int login_id = -1;
+
+    bool waiting_to_play = false;
+
+    bool new_account = false;
     int selectedName = -1;
     while (!glfwWindowShouldClose(window)) {
         if (global_message_history_size == 1000) {
@@ -196,6 +285,10 @@ int main(int argc, char **argv) {
             DeltaTime += (NowTime - LastTime);
             LastTime = NowTime;
 
+            if (!Mix_PlayingMusic()) {
+                Mix_PlayMusic(music, -1);
+            }
+
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
@@ -206,8 +299,71 @@ int main(int argc, char **argv) {
             ImGui::Begin("Login");
             {
                 ImGui::InputText("Username", username, sizeof(username));
-                if (ImGui::InputText("Password", password, sizeof(password), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_Password)) {
-                    logged = true;
+                bool text_return = ImGui::InputText("Password", password, sizeof(password), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_Password);
+                ImGui::Separator();
+                bool button_return = ImGui::Button("Login", ImVec2(ImGui::GetWindowContentRegionWidth(), 0));
+                if (text_return || button_return) {
+                    if (strlen(username) && strlen(password)) {
+                        char data[100];
+                        sprintf(data, "{ \"user\": \"%s\", \"password\": \"%s\" }", username, password);
+
+                        struct curl_slist *hs=NULL;
+                        hs = curl_slist_append(hs, "Content-Type: application/json");
+                        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hs);
+                        curl_easy_setopt(curl, CURLOPT_URL, "177.220.84.50:3000/accounts/connect");
+                        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
+                        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, response);
+                        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &login_id);
+
+                        CURLcode res = curl_easy_perform(curl);
+                        if (res != CURLE_OK) printf("Failed to request login\n");
+
+                        long http_code = 0;
+                        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+                        if (http_code == 200) {
+                            logged = true;
+                        }
+                    }
+                }
+
+                if (ImGui::Button("Sign up", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) new_account = !new_account;
+
+                if (new_account) {
+                    ImGui::SetNextWindowSize(ImVec2(0, 0));
+                    ImGui::Begin("Sign Up");
+
+                    ImGui::InputText("Username", new_username, sizeof(new_username));
+                    ImGui::InputText("Password", new_password, sizeof(new_password), ImGuiInputTextFlags_Password);
+                    ImGui::InputText("E-Mail", new_email, sizeof(new_email));
+                    ImGui::Separator();
+                    if (ImGui::Button("Create", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+                        if (strlen(new_username) && strlen(new_password) && strlen(new_email)) {
+                            char data[100];
+                            sprintf(data, "{ \"account\": {"
+                                    "\"user\":\"%s\","
+                                    "\"password\": \"%s\","
+                                    "\"email\": \"%s\","
+                                    "\"nickname\": \"%s\" } }",
+                                    new_username, new_password, new_email, new_username);
+
+                            struct curl_slist *hs=NULL;
+                            hs = curl_slist_append(hs, "Content-Type: application/json");
+                            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hs);
+                            curl_easy_setopt(curl, CURLOPT_URL, "177.220.84.50:3000/accounts.json");
+                            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
+
+                            CURLcode res = curl_easy_perform(curl);
+                            if (res != CURLE_OK) printf("Failed to request signup\n");
+
+                            long http_code = 0;
+                            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+                            if (http_code == 201) {
+                                new_account = false;
+                                memcpy(username, new_username, sizeof(username));
+                            }
+                        }
+                    }
+                    ImGui::End();
                 }
             }
             ImGui::End();
@@ -277,10 +433,45 @@ int main(int argc, char **argv) {
                     ImGui::RadioButton("4 Players", &radioPressed, 0);
                     ImGui::RadioButton("6 Players", &radioPressed, 1);
                     ImGui::RadioButton("8 Players", &radioPressed, 2);
+
                     ImGui::Separator();
 
-                    if (ImGui::Button("Play", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
-                        assert(execvp("../game/runner", 0) >= 0);
+                    static int charPick = 0;
+                    ImGui::RadioButton("Assault", &charPick, 0);
+                    ImGui::RadioButton("Bucket", &charPick, 1);
+                    ImGui::RadioButton("Roll", &charPick, 2);
+                    ImGui::RadioButton("Sniper", &charPick, 3);
+                    ImGui::Separator();
+
+                    if (!waiting_to_play) {
+                        if (ImGui::Button("Play", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+                            char data[100];
+                            sprintf(data, "{"
+                                    "\"account_id\": \"%d\","
+                                    "\"room_size\": \"%d\" "
+                                    "}",
+                                    login_id, radioPressed*2 + 4);
+
+                            struct curl_slist *hs=NULL;
+                            hs = curl_slist_append(hs, "Content-Type: application/json");
+                            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hs);
+                            curl_easy_setopt(curl, CURLOPT_URL, "177.220.84.50:3000/games/join");
+
+                            CURLcode res = curl_easy_perform(curl);
+                            if (res != CURLE_OK) printf("Failed to request join\n");
+
+                            long http_code = 0;
+                            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+                            if (http_code == 200) {
+                                waiting_to_play = true;
+                            }
+#if 0
+                            Mix_HaltMusic();
+                            Mix_FreeMusic(music);
+                            Mix_CloseAudio();
+                            assert(execvp("../game_client/bin/game_client", 0) >= 0);
+#endif
+                        }
                     }
                 }
                 ImGui::End();
@@ -326,6 +517,9 @@ int main(int argc, char **argv) {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+
+    if (curl) curl_easy_cleanup(curl);
+    curl_global_cleanup();
 
     glfwDestroyWindow(window);
     glfwTerminate();
