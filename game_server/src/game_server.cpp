@@ -51,7 +51,6 @@ int main(int argc, char **argv) {
         map.characterList[i] = &player[i];
     }
 
-    uint 
     for(ever) {
         sockaddr addr = {0};
         socklen_t len = sizeof(addr);
