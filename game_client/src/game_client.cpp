@@ -196,7 +196,7 @@ int main(int argc, char **argv) {
 
         // draw projectiles
         for (uint32_t i = 0; i < draw.num_projectiles; i++) {
-            drawSphere(draw.projectiles_pos[i], draw.projectiles_radius[i]);
+            drawSphere(draw.projectiles_pos[i], draw.projectiles_radius[i], 0, 1, 0);
         }
 
         glClear(GL_DEPTH_BUFFER_BIT);
@@ -234,7 +234,7 @@ int main(int argc, char **argv) {
 #if DEBUG
                 // TODO: make this code work client side
                 // draw slime hitsphere
-                drawSphere(draw.pos[i], draw.hit_radius[i]);
+                drawSphere(draw.pos[i], draw.hit_radius[i], 1, 0, 0);
 #endif
             }
 
