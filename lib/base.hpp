@@ -13,10 +13,16 @@ public:
     float speed;
     Vector dir;
     Quat rotation;
-
     //int damage;
     //float range;
-
-    Model model;
     float hit_radius;
+    Model model;
+};
+
+class Projectile {
+public:
+    Vector pos;
+    Vector dir;
+    float radius;
+    float speed;
 };
