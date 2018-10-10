@@ -56,6 +56,7 @@ enum FaceType {
 
 class Models {
     public:
-        Model character[AVAILABLE_CHARACTERS];
+        Model green_character[AVAILABLE_CHARACTERS];
+        Model pink_character[AVAILABLE_CHARACTERS];
         Model map;
 };

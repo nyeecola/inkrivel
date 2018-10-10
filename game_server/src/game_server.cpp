@@ -155,6 +155,7 @@ int main(int argc, char **argv) {
                     projectiles[num_projectiles].dir = looking;
                     projectiles[num_projectiles].radius = 0.04;
                     projectiles[num_projectiles].speed = 0.03;
+                    projectiles[num_projectiles].team = id % 2;
 
                     num_projectiles++;
                 }
@@ -174,11 +175,15 @@ int main(int argc, char **argv) {
                                 paint_max_z, paint_face);
 
                 // paint
-                draw.paint_points_pos[draw.num_paint_points] = paint_max_z;
-                draw.paint_points_faces[draw.num_paint_points] = paint_face;
-                // TODO: fix this number
-                draw.paint_points_radius[draw.num_paint_points] = 40;
-                draw.num_paint_points++;
+                {
+                    PaintPoint pp = {};
+                    pp.team = id % 2;
+                    pp.pos = paint_max_z;
+                    pp.face = paint_face;
+                    // TODO: fix this number and do this only for ROLO
+                    pp.radius = 40;
+                    draw.paint_points[draw.num_paint_points++] = pp;
+                }
 
                 // TODO: get this from lobby server
                 for (int i = 0; i < MAX_PLAYERS; i++) {
@@ -216,12 +221,17 @@ int main(int argc, char **argv) {
                             paint_pos, paint_face);
 
                     if (collides) {
-                        draw.paint_points_pos[draw.num_paint_points] = paint_pos;
-                        draw.paint_points_faces[draw.num_paint_points] = paint_face;
-                        //draw.paint_points_radius[draw.num_paint_points] = projectiles[i].radius * projectiles[i].radius;
-                        // TODO: fix this number
-                        draw.paint_points_radius[draw.num_paint_points] = 40;
-                        draw.num_paint_points++;
+                        // paint
+                        {
+                            PaintPoint pp = {};
+                            pp.team = projectiles[i].team;
+                            pp.pos = paint_pos;
+                            pp.face = paint_face;
+                            //draw.paint_points_radius[draw.num_paint_points] = projectiles[i].radius * projectiles[i].radius;
+                            // TODO: fix this number
+                            pp.radius = 40;
+                            draw.paint_points[draw.num_paint_points++] = pp;
+                        }
 
                         for (int j = i; j < num_projectiles - 1; j++) {
                             projectiles[j] = projectiles[j + 1];
@@ -237,6 +247,7 @@ int main(int argc, char **argv) {
 
                     draw.projectiles_pos[i] = projectiles[i].pos;
                     draw.projectiles_radius[i] = projectiles[i].radius;
+                    draw.projectiles_team[i] = projectiles[i].team;
                 }
                 draw.num_projectiles = num_projectiles;
             }
