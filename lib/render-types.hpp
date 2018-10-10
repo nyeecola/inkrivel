@@ -59,4 +59,28 @@ class Models {
         Model green_character[AVAILABLE_CHARACTERS];
         Model pink_character[AVAILABLE_CHARACTERS];
         Model map;
+
+        void getPaintResults(float percentages[]) {
+            int text_h;
+            int text_w;
+
+            glBindTexture(GL_TEXTURE_2D, this->map.texture_id);
+
+            glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &text_w);
+            glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &text_h);
+
+            GLuint texture[text_h*text_w];
+
+            glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, texture);
+
+            glBindTexture(GL_TEXTURE_2D, 0);
+
+            long green_pixels = 0;
+            for (int i = 0; i < text_h*text_w; i++) {
+                if (texture[i] == 0x1FFF1FFF) green_pixels++;
+            }
+
+            percentages[0] = 100*((float) green_pixels)/(text_h*text_w);
+            percentages[1] = 100-percentages[0];
+        }
 };
