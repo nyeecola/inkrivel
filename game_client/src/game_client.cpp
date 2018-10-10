@@ -36,6 +36,7 @@ int main(int argc, char **argv) {
 
     // ignoring return value
     SDL_GL_CreateContext(window);
+    //SDL_GL_SetSwapInterval(0);
 
     // OpenGL properties
     glEnable(GL_TEXTURE_2D);
@@ -65,7 +66,9 @@ int main(int argc, char **argv) {
     const Uint8 *kb_state = SDL_GetKeyboardState(NULL);
     bool running = true;
     input.running = true;
+
     while (running) {
+
         // handle events
         {
             SDL_Event e;
@@ -107,6 +110,7 @@ int main(int argc, char **argv) {
         input.left = kb_state[SDL_SCANCODE_A];
         input.especial = kb_state[SDL_SCANCODE_E];
 
+#if 1
         if (sendto(socket_file_descriptor, &input, sizeof(input), 0, server_adapted_address, sizeof(server_address)) == ERROR) {
             if (errno != EAGAIN && errno != EWOULDBLOCK) {
                 fprintf(stderr, "ERROR: Unespected error while sending input packet. %s.\n", strerror(errno));
@@ -125,14 +129,60 @@ int main(int argc, char **argv) {
             //printf("\n");
 #endif
         }
+#endif
 
 
+#if 1
+        DrawPacket temp_draw;
+        draw.num_paint_points = 0;
+        while (recvfrom(socket_file_descriptor, &temp_draw, sizeof(temp_draw),
+                        0, NULL, NULL) != ERROR) {
+            if (draw.frame == 0) {
+                draw = temp_draw;
+                continue;
+            }
+
+            if (temp_draw.frame > draw.frame) {
+                DrawPacket aux = draw;
+                draw = temp_draw;
+
+                memcpy(&draw.paint_points_pos[draw.num_paint_points],
+                       aux.paint_points_pos,
+                       aux.num_paint_points * sizeof(*aux.paint_points_pos));
+                memcpy(&draw.paint_points_faces[draw.num_paint_points],
+                       aux.paint_points_faces,
+                       aux.num_paint_points * sizeof(*aux.paint_points_faces));
+                memcpy(&draw.paint_points_radius[draw.num_paint_points],
+                       aux.paint_points_radius,
+                       aux.num_paint_points * sizeof(*aux.paint_points_radius));
+
+                draw.num_paint_points += aux.num_paint_points;
+            } else {
+                memcpy(&draw.paint_points_pos[draw.num_paint_points],
+                        temp_draw.paint_points_pos,
+                        temp_draw.num_paint_points * sizeof(*temp_draw.paint_points_pos));
+                memcpy(&draw.paint_points_faces[draw.num_paint_points],
+                        temp_draw.paint_points_faces,
+                        temp_draw.num_paint_points * sizeof(*temp_draw.paint_points_faces));
+                memcpy(&draw.paint_points_radius[draw.num_paint_points],
+                        temp_draw.paint_points_radius,
+                        temp_draw.num_paint_points * sizeof(*temp_draw.paint_points_radius));
+
+                draw.num_paint_points += temp_draw.num_paint_points;
+            }
+        }
+        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            fprintf(stderr, "ERROR: Unespected error while recieving draw packet. %s.\n", strerror(errno));
+            exit(1);
+        }
+#else
         if (recvfrom(socket_file_descriptor, &draw, sizeof(draw), 0, NULL, NULL) == ERROR) {
             if (errno != EAGAIN && errno != EWOULDBLOCK) {
                 fprintf(stderr, "ERROR: Unespected error while recieving draw packet. %s.\n", strerror(errno));
                 exit(1);
             }
         }
+#endif
 
         // apply paint
         // TODO: be careful with order of packets
@@ -237,7 +287,6 @@ int main(int argc, char **argv) {
                 drawSphere(draw.pos[i], draw.hit_radius[i], 1, 0, 0);
 #endif
             }
-
         }
 
         SDL_GL_SwapWindow(window);

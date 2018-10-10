@@ -34,7 +34,7 @@ typedef enum {
 } PacketType;
 
 typedef struct {
-    uint8_t frame;
+    uint64_t timestamp;
     uint8_t player_id;
     float mouse_angle;
     bool up;
@@ -47,7 +47,7 @@ typedef struct {
 } InputPacket;
 
 typedef struct {
-    uint8_t frame;
+    uint64_t frame;
     bool online[MAX_PLAYERS];
     Vector pos[MAX_PLAYERS];
     float mouse_angle[MAX_PLAYERS];
@@ -93,6 +93,7 @@ public:
 
     bool insert(PacketType type, void* packet) {
         if ( this->packets == this->max_size ) {
+            printf("Estourou o buffer\n");
             return false;
         }
         else {
@@ -109,14 +110,9 @@ public:
                 case INPUT: {
                     InputPacket *in = (InputPacket*) packet;
                     for(i = this->packets - 1; i >= 0; i--) {
-                        if ( this->input_buffer[i].frame < in->frame ) {
+                        if ( this->input_buffer[i].timestamp < in->timestamp ) {
                             this->input_buffer[i+1] = this->input_buffer[i];
-                        }
-                        else if ( this->input_buffer[i].frame == in->frame ) {
-                            printf("Two input packets with the same frame detected.\n");
-                            return false;
-                        }
-                        else {
+                        } else {
                             break;
                         }
                     }
@@ -129,12 +125,7 @@ public:
                     for(i = this->packets - 1; i >= 0; i--) {
                         if ( this->draw_buffer[i].frame < draw->frame ) {
                             this->draw_buffer[i+1] = this->draw_buffer[i];
-                        }
-                        else if ( this->draw_buffer[i].frame == draw->frame ) {
-                            printf("Two draw packets with the same frame detected.\n");
-                            return false;
-                        }
-                        else {
+                        } else {
                             break;
                         }
                     }
@@ -150,30 +141,13 @@ public:
         }
     }
 
-    InputPacket* getInByFrame(int frame) {
-        for(uint8_t i = 0; i < this->packets; i++) {
-            if ( this->input_buffer[i].frame == frame ) {
-                return &this->input_buffer[i];
-            }
-        }
-        return NULL;
-    }
-
-    DrawPacket* getDrawByFrame(int frame) {
-        for(uint8_t i = 0; i < this->packets; i++) {
-            if ( this->draw_buffer[i].frame == frame ) {
-                return &this->draw_buffer[i];
-            }
-        }
-        return NULL;
-    }
-
-    void removeOlderFramesThan(int frame) {
+#if 0
+    void removeOlderFramesThan(int timestamp) {
         int removed = 0;
         int i;
         if ( this->input_buffer != NULL ) {
             for (i = this->packets - 1; i >= 0; i--) {
-                if ( this->input_buffer[i].frame < frame ) {
+                if ( this->input_buffer[i].timestamp < timestamp ) {
                     removed++;
                 } else {
                     break;
@@ -182,7 +156,7 @@ public:
         }
         if ( this->draw_buffer != NULL ) {
             for (i = this->packets - 1; i >= 0; i--) {
-                if ( this->draw_buffer[i].frame < frame ) {
+                if ( this->draw_buffer[i].timestamp < timestamp ) {
                     removed++;
                 } else {
                     break;
@@ -191,19 +165,20 @@ public:
         }
         this->packets -= removed;
     }
+#endif
 
-    void printFrames() {
+    void print() {
         if ( this->input_buffer != NULL ) {
             printf("INPUT: ");
             for(int i = 0; i < this->packets; i++) {
-                printf("%d ", this->input_buffer[i].frame);
+                printf("%lu ", this->input_buffer[i].timestamp);
             }
             printf("\n");
         }
         if ( this->draw_buffer != NULL ) {
             printf("DRAW: ");
             for(int i = 0; i < this->packets; i++) {
-                printf("%d ", this->draw_buffer[i].frame);
+                printf("%lu ", this->draw_buffer[i].frame);
             }
             printf("\n");
         }
@@ -221,7 +196,6 @@ public:
 };
 
 int createUDPSocket() {
-
     int file_descriptor = socket(AF_INET, SOCK_DGRAM, 0);
 
     if (file_descriptor == ERROR) {
@@ -229,7 +203,7 @@ int createUDPSocket() {
         exit(1);
     }
 
-   fcntl(file_descriptor, F_SETFL, O_NONBLOCK);
+    fcntl(file_descriptor, F_SETFL, O_NONBLOCK);
 
     return file_descriptor;
 }

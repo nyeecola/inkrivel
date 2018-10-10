@@ -1,5 +1,19 @@
 #pragma once
 
+#include <sys/time.h>
+
+uint64_t getTimestamp() {
+    struct timeval tv;
+
+    gettimeofday(&tv, NULL);
+
+    unsigned long long t =
+        (unsigned long long)(tv.tv_sec) * 1000 +
+        (unsigned long long)(tv.tv_usec) / 1000;
+
+    return t;
+}
+
 // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
 bool rayIntersectsTriangle(Map map, Vector rayOrigin, Vector rayVector, Face* inTriangle, Vector& outIntersectionPoint) {
     const float EPSILON = 0.0000001;
