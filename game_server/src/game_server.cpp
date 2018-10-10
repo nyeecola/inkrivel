@@ -98,6 +98,7 @@ int main(int argc, char **argv) {
         pthread_create(&listener, NULL, listenInputs, (void *) 0);
     }
 
+    uint64_t tick_count = 0;
     uint64_t last_time = getTimestamp();
     uint64_t accumulated_time = 0;
 
@@ -127,7 +128,6 @@ int main(int argc, char **argv) {
                 draw.mouse_angle[id] = input.mouse_angle;
 
                 // move object in the direction of the keys
-                // TODO: use delta_time
                 player[id].dir = {0, 0, 0};
                 if (input.down) {
                     player[id].dir.y -= 1;
@@ -160,17 +160,24 @@ int main(int argc, char **argv) {
                 }
                 player[id].dir.normalize();
                 player[id].dir *= player[id].speed;
+            }
+
+            for(int id = 0; id < MAX_PLAYERS; id++) {
+                if (!online[id]) continue;
 
                 // collision
                 Vector max_z = {0, 0, -200};
                 Vector normal_sum = {0, 0, 0};
                 Vector paint_max_z = {0, 0, -200};
                 int paint_face;
-                collidesWithMap(map, player[id], normal_sum, max_z, paint_max_z, paint_face);
+                collidesWithMap(map, player[id], normal_sum, max_z,
+                                paint_max_z, paint_face);
 
+                // paint
                 draw.paint_points_pos[draw.num_paint_points] = paint_max_z;
                 draw.paint_points_faces[draw.num_paint_points] = paint_face;
-                draw.paint_points_radius[draw.num_paint_points] = 40; // TODO: fix this number
+                // TODO: fix this number
+                draw.paint_points_radius[draw.num_paint_points] = 40;
                 draw.num_paint_points++;
 
                 // TODO: get this from lobby server
@@ -185,7 +192,6 @@ int main(int argc, char **argv) {
                 }
 
                 // player movement
-                // TODO: use delta time
                 {
                     if (player[id].dir.len() > player[id].speed) {
                         player[id].dir.normalize();
@@ -197,12 +203,10 @@ int main(int argc, char **argv) {
                     }
                     draw.pos[id] = player[id].pos;
                 }
+            }
 
-                //printf("num projectiles %d\n", num_projectiles);
-
-                // projectile simulation
-                // TODO: gravity
-                // TODO: use delta time
+            // projectile simulation
+            {
                 for (int i = 0; i < num_projectiles; i++) {
 
                     // check collision
@@ -215,6 +219,7 @@ int main(int argc, char **argv) {
                         draw.paint_points_pos[draw.num_paint_points] = paint_pos;
                         draw.paint_points_faces[draw.num_paint_points] = paint_face;
                         //draw.paint_points_radius[draw.num_paint_points] = projectiles[i].radius * projectiles[i].radius;
+                        // TODO: fix this number
                         draw.paint_points_radius[draw.num_paint_points] = 40;
                         draw.num_paint_points++;
 
@@ -225,8 +230,7 @@ int main(int argc, char **argv) {
                         i--;
 
                         continue;
-                    }
-                    else {
+                    } else {
                         projectiles[i].dir += Vector(0, 0, -GRAVITY);
                         projectiles[i].pos += projectiles[i].dir * projectiles[i].speed;
                     }
@@ -234,9 +238,12 @@ int main(int argc, char **argv) {
                     draw.projectiles_pos[i] = projectiles[i].pos;
                     draw.projectiles_radius[i] = projectiles[i].radius;
                 }
-
                 draw.num_projectiles = num_projectiles;
             }
+
+            // end of tick
+
+            draw.frame = tick_count++;
 
             for(int i = 0; i < MAX_PLAYERS; i++) {
                 if (online[i]) {
