@@ -4,17 +4,14 @@ compile_only: FORCE
 	@make --no-print-directory -C game_server &
 	@make --no-print-directory -C lobby
 
-server_run_no_stop: FORCE
+server_run: FORCE
 	@make --no-print-directory -C chat run_server &
 	@make --no-print-directory -C game_server run &
-	@make --no-print-directory -C server run &
+	@make --no-print-directory -C server
 
 client_run: FORCE
 	@make --no-print-directory -C game_client & 
 	@make --no-print-directory -C lobby run
-
-server_run:
-	make server_run && make stop
 
 stop:
 	killall game_server & killall chat_server & killall ruby
