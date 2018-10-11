@@ -23,6 +23,9 @@
 
 #define MAX_MSG_LEN (100 + 20)
 
+#define LOGIN_SERVER_IP "127.0.0.1"
+#define LOGIN_SERVER_PORT ":3000"
+
 static void GlfwErrorCallback(int error, const char* description) {
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
@@ -310,7 +313,7 @@ int main(int argc, char **argv) {
                         struct curl_slist *hs=NULL;
                         hs = curl_slist_append(hs, "Content-Type: application/json");
                         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hs);
-                        curl_easy_setopt(curl, CURLOPT_URL, "177.220.84.50:3000/accounts/connect");
+                        curl_easy_setopt(curl, CURLOPT_URL, LOGIN_SERVER_IP LOGIN_SERVER_PORT "/accounts/connect");
                         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
                         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, response);
                         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &login_id);
@@ -349,7 +352,7 @@ int main(int argc, char **argv) {
                             struct curl_slist *hs=NULL;
                             hs = curl_slist_append(hs, "Content-Type: application/json");
                             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hs);
-                            curl_easy_setopt(curl, CURLOPT_URL, "177.220.84.50:3000/accounts.json");
+                            curl_easy_setopt(curl, CURLOPT_URL, LOGIN_SERVER_IP LOGIN_SERVER_PORT "/accounts.json");
                             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
 
                             CURLcode res = curl_easy_perform(curl);
@@ -455,7 +458,7 @@ int main(int argc, char **argv) {
                             struct curl_slist *hs=NULL;
                             hs = curl_slist_append(hs, "Content-Type: application/json");
                             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hs);
-                            curl_easy_setopt(curl, CURLOPT_URL, "177.220.84.50:3000/games/join");
+                            curl_easy_setopt(curl, CURLOPT_URL, LOGIN_SERVER_IP LOGIN_SERVER_PORT "/games/join");
 
                             CURLcode res = curl_easy_perform(curl);
                             if (res != CURLE_OK) printf("Failed to request join\n");
