@@ -10,5 +10,4 @@ class Map {
 public:
     Character *characterList[MAX_PLAYERS];
     Model model;
-    float scale;
 };

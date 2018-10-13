@@ -31,12 +31,13 @@ int socket_fd;
 int global_buffer_index = 0;
 PacketBuffer global_input_buffer[2] = { PacketBuffer(INPUT, MAX_INPUT_BUFFER_SIZE),
                                         PacketBuffer(INPUT, MAX_INPUT_BUFFER_SIZE) };
+bool should_die = false;
 bool online[MAX_PLAYERS] = {0};
 // TODO: MUST BE INITIALIZED PROPERLY
 DrawPacket draw = {0};
 
 void *listenInputs(void *arg) {
-    for (ever) {
+    while (!should_die) {
         socklen_t len = sizeof(addr);
 
         InputPacket input = {0};
@@ -59,6 +60,8 @@ void *listenInputs(void *arg) {
             }
         }
     }
+
+    return NULL;
 }
 
 int main(int argc, char **argv) {
@@ -81,7 +84,6 @@ int main(int argc, char **argv) {
     // Create map
     Map map;
     map.model = loadWavefrontModel("../assets/map7.obj", "../assets/map2.png", VERTEX_ALL);
-    map.scale = MAP_SCALE;
     for(int i = 0; i < MAX_PLAYERS; i++){
         map.characterList[i] = &player[i];
     }
@@ -98,7 +100,7 @@ int main(int argc, char **argv) {
     uint64_t last_time = getTimestamp();
     uint64_t accumulated_time = 0;
 
-    uint64_t game_timer = TIMER_DURATION_IN_SECONDS * 1000;
+    int game_timer = TIMER_DURATION_IN_SECONDS * 1000;
 
     for(ever) {
         uint64_t cur_time = getTimestamp();
@@ -287,6 +289,14 @@ int main(int argc, char **argv) {
             {
                 int seconds = game_timer / 1000;
                 sprintf(draw.timer, "%02d:%02d", seconds / 60, seconds % 60);
+
+                if (game_timer <= 0) {
+                    float scores[3];
+                    getPaintResults(map.model, scores);
+                    printf("Green: %f\nPink: %f\nNone: %f\n", scores[0], scores[1], scores[2]);
+                    should_die = true;
+                    break;
+                }
             }
 
             // end of tick

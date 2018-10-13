@@ -184,11 +184,12 @@ void drawSphere(Vector center, float radius, float r, float g, float b) {
     glPopMatrix();
 }
 
+// TODO: stop assuming the next line
 // NOTE: assumes texture size is 1024x1024
 // NOTE: max radius for now is 100
 #define MAX_INK_SPOT_RADIUS 100
 void paintCircle(Model map_model, float map_scale, Face *paint_face, Vector center, float radius, uint8_t r, uint8_t g, uint8_t b, bool opengl) {
-    assert (radius <= 100);
+    assert(radius <= 100);
 
     Vector v0 = map_scale * map_model.vertices[paint_face->vertices[0]];
     Vector v1 = map_scale * map_model.vertices[paint_face->vertices[1]];
@@ -212,6 +213,8 @@ void paintCircle(Model map_model, float map_scale, Face *paint_face, Vector cent
         for (int k2 = 0; k2 < MAX_INK_SPOT_RADIUS; k2++) {
             int y = tex_y * 1023 - MAX_INK_SPOT_RADIUS/2 + k1;
             int x = tex_x * 1023 - MAX_INK_SPOT_RADIUS/2 + k2;
+
+            if (x > 1023 || x < 0 || y < 0 || y > 1023) continue;
 
             if ((k1-MAX_INK_SPOT_RADIUS/2) * (k1-MAX_INK_SPOT_RADIUS/2)
                 + (k2-MAX_INK_SPOT_RADIUS/2) * (k2-MAX_INK_SPOT_RADIUS/2) <= radius * radius) {
