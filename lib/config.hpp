@@ -8,7 +8,7 @@
 #define ever ;;
 #define MAX_PLAYERS 8
 // TODO: maybe do something about this
-#define MAX_PROJECTILES 100
+#define MAX_PROJECTILES 400
 #define MAX_PAINT_POINTS 100
 
 #define MAX(a, b) ((a) > (b) ? a : b)
@@ -26,6 +26,10 @@
 #define MAX_OBJ_FACES 100000
 
 #define GRAVITY 0.005
+
+#define TIMER_X SCREEN_WIDTH/2 - 42
+#define TIMER_Y SCREEN_HEIGHT - 30
+#define TIMER_DURATION_IN_SECONDS 190
 
 typedef enum {
     TEST,

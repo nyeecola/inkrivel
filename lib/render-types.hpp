@@ -54,36 +54,30 @@ enum FaceType {
     VERTEX_ALL
 };
 
+void getPaintResults(Model map, float percentages[3]) {
+    int w = map.texture_image->w;
+    int h = map.texture_image->h;
+    int size = w * h;
+
+    uint32_t *pixels = (uint32_t *) map.texture_image->pixels;
+
+    percentages[0] = percentages[1] = 0;
+    for (int i = 0; i < size; i++) {
+        uint32_t pixel = pixels[i];
+        //if (pixel == 0x1FFF1FFF) percentages[0]++;
+        //else if (pixel == 0xFF1FFFFF) percentages[1]++;
+        if (pixel == 0xFF1FFF1F) percentages[0]++;
+        else if (pixel == 0xFFFF1FFF) percentages[1]++;
+    }
+
+    percentages[0] = 100*percentages[0]/size;
+    percentages[1] = 100*percentages[1]/size;
+    percentages[2] = 100-percentages[0]-percentages[1];
+}
+
 class Models {
     public:
         Model green_character[AVAILABLE_CHARACTERS];
         Model pink_character[AVAILABLE_CHARACTERS];
         Model map;
-
-        void getPaintResults(float percentages[3]) {
-            int text_h;
-            int text_w;
-
-            glBindTexture(GL_TEXTURE_2D, this->map.texture_id);
-
-            glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &text_w);
-            glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &text_h);
-
-            int size = text_h*text_w;
-            GLuint texture[size];
-
-            glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, texture);
-
-            glBindTexture(GL_TEXTURE_2D, 0);
-
-            percentages[0] = percentages[1] = 0;
-            for (int i = 0; i < size; i++) {
-                if (texture[i] == 0x1FFF1FFF) percentages[0]++;
-                else if (texture[i] == 0xFF1FFFFF) percentages[1]++;
-            }
-
-            percentages[0] = 100*percentages[0]/size;
-            percentages[1] = 100*percentages[1]/size;
-            percentages[2] = 100-percentages[0]-percentages[1];
-        }
 };

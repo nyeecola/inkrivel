@@ -187,7 +187,7 @@ void drawSphere(Vector center, float radius, float r, float g, float b) {
 // NOTE: assumes texture size is 1024x1024
 // NOTE: max radius for now is 100
 #define MAX_INK_SPOT_RADIUS 100
-void paintCircle(Model map_model, float map_scale, Face *paint_face, Vector center, float radius, uint8_t r, uint8_t g, uint8_t b) {
+void paintCircle(Model map_model, float map_scale, Face *paint_face, Vector center, float radius, uint8_t r, uint8_t g, uint8_t b, bool opengl) {
     assert (radius <= 100);
 
     Vector v0 = map_scale * map_model.vertices[paint_face->vertices[0]];
@@ -236,10 +236,82 @@ void paintCircle(Model map_model, float map_scale, Face *paint_face, Vector cent
         }
     }
 
-    glBindTexture(GL_TEXTURE_2D, map_model.texture_id);
-    glTexSubImage2D(GL_TEXTURE_2D, 0,
-            tex_x * 1023 - MAX_INK_SPOT_RADIUS / 2, tex_y * 1023 - MAX_INK_SPOT_RADIUS / 2,
-            MAX_INK_SPOT_RADIUS, MAX_INK_SPOT_RADIUS, GL_RGBA, GL_UNSIGNED_BYTE,
-            (const void *) ink_spot);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    if (opengl) {
+        glBindTexture(GL_TEXTURE_2D, map_model.texture_id);
+        glTexSubImage2D(GL_TEXTURE_2D, 0,
+                tex_x * 1023 - MAX_INK_SPOT_RADIUS / 2, tex_y * 1023 - MAX_INK_SPOT_RADIUS / 2,
+                MAX_INK_SPOT_RADIUS, MAX_INK_SPOT_RADIUS, GL_RGBA, GL_UNSIGNED_BYTE,
+                (const void *) ink_spot);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+}
+
+#ifndef STB_TRUETYPE_IMPLEMENTATION
+#define STB_TRUETYPE_IMPLEMENTATION  // force following include to generate implementation
+#include "stb_truetype.h"
+#endif
+
+unsigned char ttf_buffer[1<<22];
+unsigned char temp_bitmap[512*512];
+
+stbtt_bakedchar cdata[96]; // ASCII 32..126 is 95 glyphs
+GLuint ftex;
+
+void stbtt_initfont(void)
+{
+   fread(ttf_buffer, 1, 1<<22, fopen("/usr/share/fonts/TTF/Inconsolata-Regular.ttf", "rb"));
+   stbtt_BakeFontBitmap(ttf_buffer,0, 32.0, temp_bitmap,512,512, 32,96, cdata); // no guarantee this fits!
+   // can free ttf_buffer at this point
+   glGenTextures(1, &ftex);
+   glBindTexture(GL_TEXTURE_2D, ftex);
+   glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 512,512, 0, GL_ALPHA, GL_UNSIGNED_BYTE, temp_bitmap);
+   // can free temp_bitmap at this point
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+}
+
+void stbtt_print(float x, float y, char *text)
+{
+   // assume orthographic projection with units = screen pixels, origin at top left
+   glEnable(GL_TEXTURE_2D);
+   glBindTexture(GL_TEXTURE_2D, ftex);
+   glBegin(GL_QUADS);
+   while (*text) {
+      if (*text >= 32 && *text < 128) {
+         stbtt_aligned_quad q;
+         stbtt_GetBakedQuad(cdata, 512,512, *text-32, &x,&y,&q,1);//1=opengl & d3d10+,0=d3d9
+         stbtt_bakedchar baked_char = cdata[*text - 32]; // TODO: remove this magic number
+         //printf("%f %f %f %f %f\n", q.x0, q.y0, q.x1, q.y1, baked_char.yoff);
+         if (*text == '2' || *text == '4' || *text == '7') baked_char.yoff -= 1.0f;
+         if (*text == ':') baked_char.yoff -= 2.0f;
+
+         glTexCoord2f(q.s0,q.t1); glVertex2f(q.x0,q.y0-baked_char.yoff);
+         glTexCoord2f(q.s1,q.t1); glVertex2f(q.x1,q.y0-baked_char.yoff);
+         glTexCoord2f(q.s1,q.t0); glVertex2f(q.x1,q.y1-baked_char.yoff);
+         glTexCoord2f(q.s0,q.t0); glVertex2f(q.x0,q.y1-baked_char.yoff);
+      }
+      ++text;
+   }
+   glEnd();
+}
+
+void prepareDrawFont() {
+    glDisable(GL_LIGHTING);
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    //glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    glOrtho(0, SCREEN_WIDTH, 0, SCREEN_HEIGHT, -1, 1.0); // origin in bottom left
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+}
+
+void endDrawFont() {
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
 }
