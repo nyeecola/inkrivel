@@ -262,7 +262,7 @@ GLuint ftex;
 
 void stbtt_initfont(void)
 {
-   fread(ttf_buffer, 1, 1<<22, fopen("/usr/share/fonts/TTF/Inconsolata-Regular.ttf", "rb"));
+   fread(ttf_buffer, 1, 1<<22, fopen("../assets/Inconsolata-Regular.ttf", "rb"));
    stbtt_BakeFontBitmap(ttf_buffer,0, 32.0, temp_bitmap,512,512, 32,96, cdata); // no guarantee this fits!
    // can free ttf_buffer at this point
    glGenTextures(1, &ftex);
