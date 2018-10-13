@@ -50,6 +50,8 @@ int main(int argc, char **argv) {
     glLoadIdentity();
     makeFrustum(45, (float) SCREEN_WIDTH / SCREEN_HEIGHT, 0.1, 100);
 
+    stbtt_initfont();
+
     // Load models
     Models models = {0};
     models.green_character[0] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_green.png", VERTEX_ALL);
@@ -72,6 +74,9 @@ int main(int argc, char **argv) {
     input.running = true;
 
     while (running) {
+        glEnable(GL_LIGHTING);
+        glEnable(GL_CULL_FACE);
+        glDisable(GL_BLEND);
 
         // handle events
         {
@@ -191,7 +196,7 @@ int main(int argc, char **argv) {
             paintCircle(models.map, MAP_SCALE,
                         &models.map.faces[draw.paint_points[i].face],
                         draw.paint_points[i].pos, draw.paint_points[i].radius,
-                        r, g, b);
+                        r, g, b, true);
         }
 
         // render
@@ -262,7 +267,7 @@ int main(int argc, char **argv) {
         glClear(GL_DEPTH_BUFFER_BIT);
 
         // draw slimes
-        for(int i = 0; i < MAX_PLAYERS ; i++) {
+        for (int i = 0; i < MAX_PLAYERS ; i++) {
             if ( draw.online[i] ) {
                 GLfloat mat_ambient[] = { 0.1, 0.1, 0.1, 1.0 };
                 GLfloat mat_diffuse[] = { 0.3, 0.3, 0.3, 1.0 };
@@ -301,6 +306,17 @@ int main(int argc, char **argv) {
                 drawSphere(draw.pos[i], draw.hit_radius[i], 1, 0, 0);
 #endif
             }
+        }
+
+        glClear(GL_DEPTH_BUFFER_BIT);
+
+        // font
+        {
+            prepareDrawFont();
+
+            stbtt_print(TIMER_X, TIMER_Y, draw.timer);
+
+            endDrawFont();
         }
 
         SDL_GL_SwapWindow(window);

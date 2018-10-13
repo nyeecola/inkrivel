@@ -17,9 +17,9 @@ uint64_t getTimestamp() {
 // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
 bool rayIntersectsTriangle(Map map, Vector rayOrigin, Vector rayVector, Face* inTriangle, Vector& outIntersectionPoint) {
     const float EPSILON = 0.0000001;
-    Vector vertex0 = map.scale * map.model.vertices[inTriangle->vertices[0]];
-    Vector vertex1 = map.scale * map.model.vertices[inTriangle->vertices[1]];
-    Vector vertex2 = map.scale * map.model.vertices[inTriangle->vertices[2]];
+    Vector vertex0 = MAP_SCALE * map.model.vertices[inTriangle->vertices[0]];
+    Vector vertex1 = MAP_SCALE * map.model.vertices[inTriangle->vertices[1]];
+    Vector vertex2 = MAP_SCALE * map.model.vertices[inTriangle->vertices[2]];
     Vector edge1, edge2, h, s, q;
     float a,f,u,v;
     edge1 = vertex1 - vertex0;
@@ -138,9 +138,9 @@ bool projectileCollidesWithMap(Map map, Projectile projectile, Vector& paint_pos
     for (int i = 0; i < map.model.num_faces; i++) {
         Face *cur = &map.model.faces[i];
 
-        Vector vertex0 = map.scale * map.model.vertices[cur->vertices[0]];
-        Vector vertex1 = map.scale * map.model.vertices[cur->vertices[1]];
-        Vector vertex2 = map.scale * map.model.vertices[cur->vertices[2]];
+        Vector vertex0 = MAP_SCALE * map.model.vertices[cur->vertices[0]];
+        Vector vertex1 = MAP_SCALE * map.model.vertices[cur->vertices[1]];
+        Vector vertex2 = MAP_SCALE * map.model.vertices[cur->vertices[2]];
 
         Vector v1 = vertex2 - vertex0;
         Vector v2 = vertex1 - vertex0;
@@ -182,9 +182,9 @@ void collidesWithMap(Map map, Character& player, Vector& normal_sum, Vector& max
     for (int i = 0; i < map.model.num_faces; i++) {
         Face *cur = &map.model.faces[i];
 
-        Vector vertex0 = map.scale * map.model.vertices[cur->vertices[0]];
-        Vector vertex1 = map.scale * map.model.vertices[cur->vertices[1]];
-        Vector vertex2 = map.scale * map.model.vertices[cur->vertices[2]];
+        Vector vertex0 = MAP_SCALE * map.model.vertices[cur->vertices[0]];
+        Vector vertex1 = MAP_SCALE * map.model.vertices[cur->vertices[1]];
+        Vector vertex2 = MAP_SCALE * map.model.vertices[cur->vertices[2]];
 
         Vector v1 = vertex2 - vertex0;
         Vector v2 = vertex1 - vertex0;

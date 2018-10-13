@@ -31,21 +31,18 @@ int socket_fd;
 int global_buffer_index = 0;
 PacketBuffer global_input_buffer[2] = { PacketBuffer(INPUT, MAX_INPUT_BUFFER_SIZE),
                                         PacketBuffer(INPUT, MAX_INPUT_BUFFER_SIZE) };
+bool should_die = false;
 bool online[MAX_PLAYERS] = {0};
 // TODO: MUST BE INITIALIZED PROPERLY
 DrawPacket draw = {0};
 
 void *listenInputs(void *arg) {
-    for (ever) {
+    while (!should_die) {
         socklen_t len = sizeof(addr);
 
         InputPacket input = {0};
 
         if (recvfrom(socket_fd, &input, sizeof(input), 0, &addr, &len) != ERROR) {
-            printf("Buffer 0 size %d\n", global_input_buffer[0].packets);
-            printf("Buffer 1 size %d\n", global_input_buffer[1].packets);
-            puts("aa");
-
             int success = global_input_buffer[global_buffer_index].insert(INPUT, &input);
             assert(success);
 
@@ -63,6 +60,8 @@ void *listenInputs(void *arg) {
             }
         }
     }
+
+    return NULL;
 }
 
 int main(int argc, char **argv) {
@@ -85,7 +84,6 @@ int main(int argc, char **argv) {
     // Create map
     Map map;
     map.model = loadWavefrontModel("../assets/map7.obj", "../assets/map2.png", VERTEX_ALL);
-    map.scale = MAP_SCALE;
     for(int i = 0; i < MAX_PLAYERS; i++){
         map.characterList[i] = &player[i];
     }
@@ -102,17 +100,23 @@ int main(int argc, char **argv) {
     uint64_t last_time = getTimestamp();
     uint64_t accumulated_time = 0;
 
+    int game_timer = TIMER_DURATION_IN_SECONDS * 1000;
+
     for(ever) {
         uint64_t cur_time = getTimestamp();
         uint64_t dt = cur_time - last_time; // TODO: maybe in seconds later in the future
         last_time = cur_time;
 
         accumulated_time += dt;
+        game_timer -= dt;
 
         // do tick
         if (accumulated_time > TICK_TIME) {
             global_buffer_index = !global_buffer_index;
             usleep(THREAD_MUTEX_DELAY); // polite thread safety mechanism
+
+            // reset paint commands
+            draw.num_paint_points = 0;
 
             while (global_input_buffer[!global_buffer_index].packets) {
                 int index = --global_input_buffer[!global_buffer_index].packets;
@@ -120,9 +124,6 @@ int main(int argc, char **argv) {
                 InputPacket input = global_input_buffer[!global_buffer_index].input_buffer[index];
 
                 uint8_t id = input.player_id;
-
-                // reset paint commands
-                draw.num_paint_points = 0;
 
                 // mouse position relative to the middle of the window
                 draw.mouse_angle[id] = input.mouse_angle;
@@ -183,6 +184,22 @@ int main(int argc, char **argv) {
                     // TODO: fix this number and do this only for ROLO
                     pp.radius = 40;
                     draw.paint_points[draw.num_paint_points++] = pp;
+
+                    uint8_t r, g, b;
+                    if (id % 2) {
+                        r = 0xFF;
+                        g = 0x1F;
+                        b = 0xFF;
+                    } else {
+                        r = 0x1F;
+                        g = 0xFF;
+                        b = 0x1F;
+                    }
+
+                    paintCircle(map.model, MAP_SCALE,
+                                &map.model.faces[pp.face],
+                                pp.pos, pp.radius,
+                                r, g, b, false);
                 }
 
                 // TODO: get this from lobby server
@@ -231,6 +248,22 @@ int main(int argc, char **argv) {
                             // TODO: fix this number
                             pp.radius = 40;
                             draw.paint_points[draw.num_paint_points++] = pp;
+
+                            uint8_t r, g, b;
+                            if (pp.team) {
+                                r = 0xFF;
+                                g = 0x1F;
+                                b = 0xFF;
+                            } else {
+                                r = 0x1F;
+                                g = 0xFF;
+                                b = 0x1F;
+                            }
+
+                            paintCircle(map.model, MAP_SCALE,
+                                        &map.model.faces[pp.face],
+                                        pp.pos, pp.radius,
+                                        r, g, b, false);
                         }
 
                         for (int j = i; j < num_projectiles - 1; j++) {
@@ -252,8 +285,21 @@ int main(int argc, char **argv) {
                 draw.num_projectiles = num_projectiles;
             }
 
-            // end of tick
+            // timer
+            {
+                int seconds = game_timer / 1000;
+                sprintf(draw.timer, "%02d:%02d", seconds / 60, seconds % 60);
 
+                if (game_timer <= 0) {
+                    float scores[3];
+                    getPaintResults(map.model, scores);
+                    printf("Green: %f\nPink: %f\nNone: %f\n", scores[0], scores[1], scores[2]);
+                    should_die = true;
+                    break;
+                }
+            }
+
+            // end of tick
             draw.frame = tick_count++;
 
             for(int i = 0; i < MAX_PLAYERS; i++) {

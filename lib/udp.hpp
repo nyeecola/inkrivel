@@ -68,6 +68,8 @@ typedef struct {
 
     uint32_t num_paint_points;
     PaintPoint paint_points[MAX_PAINT_POINTS];
+
+    char timer[6]; // NULL terminated
 } DrawPacket;
 
 class PacketBuffer {
