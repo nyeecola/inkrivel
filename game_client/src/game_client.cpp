@@ -286,6 +286,8 @@ int main(int argc, char **argv) {
                           draw.rotations[i].y,
                           draw.rotations[i].z);
                 glRotatef(draw.mouse_angle[i], 0, 0, 1);
+
+                // model specific stuff
                 switch (draw.model_id[i]) {
                     case TEST:
                         glScalef(TEST_SCALE);
@@ -298,6 +300,7 @@ int main(int argc, char **argv) {
                 } else {
                     drawModel(models.green_character[draw.model_id[i]]);
                 }
+
                 glPopMatrix();
 
 #if DEBUG

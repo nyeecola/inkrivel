@@ -16,6 +16,7 @@ public:
     //int damage;
     //float range;
     float hit_radius;
+    int health;
     Model model;
 };
 
