@@ -47,6 +47,13 @@ typedef struct {
 } InputPacket;
 
 typedef struct {
+    uint64_t team; // 0 or 1, meaning even or odd
+    Vector pos;
+    uint32_t face;
+    float radius;
+} PaintPoint;
+
+typedef struct {
     uint64_t frame;
     bool online[MAX_PLAYERS];
     Vector pos[MAX_PLAYERS];
@@ -57,11 +64,10 @@ typedef struct {
     uint32_t num_projectiles;
     Vector projectiles_pos[MAX_PROJECTILES];
     float projectiles_radius[MAX_PROJECTILES];
+    uint8_t projectiles_team[MAX_PROJECTILES];
 
     uint32_t num_paint_points;
-    Vector paint_points_pos[MAX_PAINT_POINTS];
-    uint32_t paint_points_faces[MAX_PAINT_POINTS];
-    float paint_points_radius[MAX_PAINT_POINTS];
+    PaintPoint paint_points[MAX_PAINT_POINTS];
 } DrawPacket;
 
 class PacketBuffer {

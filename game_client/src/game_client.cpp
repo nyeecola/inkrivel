@@ -52,10 +52,14 @@ int main(int argc, char **argv) {
 
     // Load models
     Models models = {0};
-    models.character[0] = loadWavefrontModel("../assets/slime.obj", "../assets/slime.png", VERTEX_ALL);
-    models.character[1] = loadWavefrontModel("../assets/slime.obj", "../assets/slime.png", VERTEX_ALL);
-    models.character[2] = loadWavefrontModel("../assets/slime.obj", "../assets/slime.png", VERTEX_ALL);
-    models.character[3] = loadWavefrontModel("../assets/slime.obj", "../assets/slime.png", VERTEX_ALL);
+    models.green_character[0] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_green.png", VERTEX_ALL);
+    models.green_character[1] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_green.png", VERTEX_ALL);
+    models.green_character[2] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_green.png", VERTEX_ALL);
+    models.green_character[3] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_green.png", VERTEX_ALL);
+    models.pink_character[0] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_pink.png", VERTEX_ALL);
+    models.pink_character[1] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_pink.png", VERTEX_ALL);
+    models.pink_character[2] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_pink.png", VERTEX_ALL);
+    models.pink_character[3] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_pink.png", VERTEX_ALL);
     models.map = loadWavefrontModel("../assets/map7.obj", "../assets/map2.png", VERTEX_ALL);
 
     // TODO: MUST BE INITIALIZED PROPERLY
@@ -146,28 +150,14 @@ int main(int argc, char **argv) {
                 DrawPacket aux = draw;
                 draw = temp_draw;
 
-                memcpy(&draw.paint_points_pos[draw.num_paint_points],
-                       aux.paint_points_pos,
-                       aux.num_paint_points * sizeof(*aux.paint_points_pos));
-                memcpy(&draw.paint_points_faces[draw.num_paint_points],
-                       aux.paint_points_faces,
-                       aux.num_paint_points * sizeof(*aux.paint_points_faces));
-                memcpy(&draw.paint_points_radius[draw.num_paint_points],
-                       aux.paint_points_radius,
-                       aux.num_paint_points * sizeof(*aux.paint_points_radius));
-
+                memcpy(&draw.paint_points[draw.num_paint_points],
+                       aux.paint_points,
+                       aux.num_paint_points * sizeof(*aux.paint_points));
                 draw.num_paint_points += aux.num_paint_points;
             } else {
-                memcpy(&draw.paint_points_pos[draw.num_paint_points],
-                        temp_draw.paint_points_pos,
-                        temp_draw.num_paint_points * sizeof(*temp_draw.paint_points_pos));
-                memcpy(&draw.paint_points_faces[draw.num_paint_points],
-                        temp_draw.paint_points_faces,
-                        temp_draw.num_paint_points * sizeof(*temp_draw.paint_points_faces));
-                memcpy(&draw.paint_points_radius[draw.num_paint_points],
-                        temp_draw.paint_points_radius,
-                        temp_draw.num_paint_points * sizeof(*temp_draw.paint_points_radius));
-
+                memcpy(&draw.paint_points[draw.num_paint_points],
+                        temp_draw.paint_points,
+                        temp_draw.num_paint_points * sizeof(*temp_draw.paint_points));
                 draw.num_paint_points += temp_draw.num_paint_points;
             }
         }
@@ -187,11 +177,21 @@ int main(int argc, char **argv) {
         // apply paint
         // TODO: be careful with order of packets
         for (uint32_t i = 0; i < draw.num_paint_points; i++) {
-            //printf("i %d\n", i);
+            uint8_t r, g, b;
+            if (draw.paint_points[i].team) {
+                r = 0xFF;
+                g = 0x1F;
+                b = 0xFF;
+            } else {
+                r = 0x1F;
+                g = 0xFF;
+                b = 0x1F;
+            }
+
             paintCircle(models.map, MAP_SCALE,
-                        &models.map.faces[draw.paint_points_faces[i]],
-                        draw.paint_points_pos[i], draw.paint_points_radius[i],
-                        0x1F, 0xFF, 0x1F);
+                        &models.map.faces[draw.paint_points[i].face],
+                        draw.paint_points[i].pos, draw.paint_points[i].radius,
+                        r, g, b);
         }
 
         // render
@@ -246,7 +246,17 @@ int main(int argc, char **argv) {
 
         // draw projectiles
         for (uint32_t i = 0; i < draw.num_projectiles; i++) {
-            drawSphere(draw.projectiles_pos[i], draw.projectiles_radius[i], 0, 1, 0);
+            float r, g, b;
+            if (draw.projectiles_team[i]) {
+                r = 1;
+                g = 0;
+                b = 1;
+            } else {
+                r = 0;
+                g = 1;
+                b = 0;
+            }
+            drawSphere(draw.projectiles_pos[i], draw.projectiles_radius[i], r, g, b);
         }
 
         glClear(GL_DEPTH_BUFFER_BIT);
@@ -278,7 +288,11 @@ int main(int argc, char **argv) {
                     default:
                         assert(false);
                 }
-                drawModel(models.character[draw.model_id[i]]);
+                if (i % 2) {
+                    drawModel(models.pink_character[draw.model_id[i]]);
+                } else {
+                    drawModel(models.green_character[draw.model_id[i]]);
+                }
                 glPopMatrix();
 
 #if DEBUG

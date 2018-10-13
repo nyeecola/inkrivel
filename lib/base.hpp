@@ -25,4 +25,5 @@ public:
     Vector dir;
     float radius;
     float speed;
+    uint8_t team;
 };
