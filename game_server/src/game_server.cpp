@@ -79,6 +79,7 @@ int main(int argc, char **argv) {
         player[i].speed = 0.02;
         player[i].dir = {0, 0, 0};
         player[i].rotation = {0, 0, 0, 1};
+        player[i].health = STARTING_HEALTH;
     }
 
     // Create map
@@ -236,21 +237,27 @@ int main(int argc, char **argv) {
                         if (!online[j] || projectiles[i].team == (j % 2)) continue;
 
                         float offset_z = 0;
+                        int damage = 0;
                         switch (draw.model_id[j]) {
                             case TEST:
                                 offset_z = TEST_HITBOX_Z_OFFSET; 
+                                damage = TEST_PROJECTILE_DAMAGE;
                                 break;
                             case ROLO:
                                 offset_z = ROLO_HITBOX_Z_OFFSET; 
+                                damage = ROLO_PROJECTILE_DAMAGE;
                                 break;
                             case ASSAULT:
                                 offset_z = ASSAULT_HITBOX_Z_OFFSET; 
+                                damage = ASSAULT_PROJECTILE_DAMAGE;
                                 break;
                             case SNIPER:
                                 offset_z = SNIPER_HITBOX_Z_OFFSET; 
+                                damage = SNIPER_PROJECTILE_DAMAGE;
                                 break;
                             case BUCKET:
                                 offset_z = BUCKET_HITBOX_Z_OFFSET; 
+                                damage = BUCKET_PROJECTILE_DAMAGE;
                                 break;
                             default:
                                 assert(false);
@@ -266,6 +273,15 @@ int main(int argc, char **argv) {
                             }
                             num_projectiles--;
                             i--;
+
+                            player[j].health -= damage;
+
+                            // respawn
+                            // TODO: finish respawn
+                            if (player[j].health <= 0) {
+                                player[j].pos = Vector(0, 0, 400);
+                                player[j].health = STARTING_HEALTH;
+                            }
 
                             goto next;
                         }
