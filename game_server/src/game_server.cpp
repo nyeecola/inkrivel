@@ -231,56 +231,99 @@ int main(int argc, char **argv) {
             {
                 for (int i = 0; i < num_projectiles; i++) {
 
-                    // check collision
-                    Vector paint_pos;
-                    int paint_face;
-                    bool collides = projectileCollidesWithMap(map, projectiles[i],
-                            paint_pos, paint_face);
+                    // check collision with player
+                    for (int j = 0; j < MAX_PLAYERS; j++) {
+                        if (!online[j] || projectiles[i].team == (j % 2)) continue;
 
-                    if (collides) {
-                        // paint
-                        {
-                            PaintPoint pp = {};
-                            pp.team = projectiles[i].team;
-                            pp.pos = paint_pos;
-                            pp.face = paint_face;
-                            //draw.paint_points_radius[draw.num_paint_points] = projectiles[i].radius * projectiles[i].radius;
-                            // TODO: fix this number
-                            pp.radius = 40;
-                            draw.paint_points[draw.num_paint_points++] = pp;
+                        float offset_z = 0;
+                        switch (draw.model_id[j]) {
+                            case TEST:
+                                offset_z = TEST_HITBOX_Z_OFFSET; 
+                                break;
+                            case ROLO:
+                                offset_z = ROLO_HITBOX_Z_OFFSET; 
+                                break;
+                            case ASSAULT:
+                                offset_z = ASSAULT_HITBOX_Z_OFFSET; 
+                                break;
+                            case SNIPER:
+                                offset_z = SNIPER_HITBOX_Z_OFFSET; 
+                                break;
+                            case BUCKET:
+                                offset_z = BUCKET_HITBOX_Z_OFFSET; 
+                                break;
+                            default:
+                                assert(false);
+                        }
 
-                            uint8_t r, g, b;
-                            if (pp.team) {
-                                r = 0xFF;
-                                g = 0x1F;
-                                b = 0xFF;
-                            } else {
-                                r = 0x1F;
-                                g = 0xFF;
-                                b = 0x1F;
+                        Vector player_hitbox_center = player[j].pos +
+                                                      Vector(0, 0, offset_z);
+                        Vector dist_vector = player_hitbox_center - projectiles[i].pos;
+                        if (dist_vector.len() < player[j].hit_radius +
+                                                projectiles[i].radius) {
+                            for (int k = i; k < num_projectiles - 1; k++) {
+                                projectiles[k] = projectiles[k + 1];
                             }
+                            num_projectiles--;
+                            i--;
 
-                            paintCircle(map.model, MAP_SCALE,
+                            goto next;
+                        }
+                    }
+
+                    // check collision with map
+                    {
+                        Vector paint_pos;
+                        int paint_face;
+                        bool collides = projectileCollidesWithMap(map, projectiles[i],
+                                paint_pos, paint_face);
+
+                        if (collides) {
+                            // paint
+                            {
+                                PaintPoint pp = {};
+                                pp.team = projectiles[i].team;
+                                pp.pos = paint_pos;
+                                pp.face = paint_face;
+                                //draw.paint_points_radius[draw.num_paint_points] = projectiles[i].radius * projectiles[i].radius;
+                                // TODO: fix this number
+                                pp.radius = 40;
+                                draw.paint_points[draw.num_paint_points++] = pp;
+
+                                uint8_t r, g, b;
+                                if (pp.team) {
+                                    r = 0xFF;
+                                    g = 0x1F;
+                                    b = 0xFF;
+                                } else {
+                                    r = 0x1F;
+                                    g = 0xFF;
+                                    b = 0x1F;
+                                }
+
+                                paintCircle(map.model, MAP_SCALE,
                                         &map.model.faces[pp.face],
                                         pp.pos, pp.radius,
                                         r, g, b, false);
-                        }
+                            }
 
-                        for (int j = i; j < num_projectiles - 1; j++) {
-                            projectiles[j] = projectiles[j + 1];
-                        }
-                        num_projectiles--;
-                        i--;
+                            for (int j = i; j < num_projectiles - 1; j++) {
+                                projectiles[j] = projectiles[j + 1];
+                            }
+                            num_projectiles--;
+                            i--;
 
-                        continue;
-                    } else {
-                        projectiles[i].dir += Vector(0, 0, -GRAVITY);
-                        projectiles[i].pos += projectiles[i].dir * projectiles[i].speed;
+                            goto next;
+                        } else {
+                            projectiles[i].dir += Vector(0, 0, -GRAVITY);
+                            projectiles[i].pos += projectiles[i].dir * projectiles[i].speed;
+                        }
                     }
 
                     draw.projectiles_pos[i] = projectiles[i].pos;
                     draw.projectiles_radius[i] = projectiles[i].radius;
                     draw.projectiles_team[i] = projectiles[i].team;
+next:;
                 }
                 draw.num_projectiles = num_projectiles;
             }
