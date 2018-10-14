@@ -188,8 +188,23 @@ int main(int argc, char **argv) {
                 player[id].dir *= player[id].speed;
             }
 
+            // player-related simulation
             for(int id = 0; id < MAX_PLAYERS; id++) {
                 if (!online[id]) continue;
+
+                // respawn
+                if (player[id].dead) {
+                    player[id].respawn_timer -= (float) TICK_TIME / 1000.0f;
+                    if (player[id].respawn_timer < 0) {
+                        player[id].dead = false;
+                        draw.respawn_timer[id] = -1;
+                    } else {
+                        draw.respawn_timer[id] = (int) player[id].respawn_timer;
+                        continue;
+                    }
+                } else {
+                    draw.respawn_timer[id] = -1;
+                }
 
                 // collision
                 Vector max_z = {0, 0, -200};
@@ -294,10 +309,11 @@ int main(int argc, char **argv) {
                             player[j].health -= projectiles[i].damage;
 
                             // respawn
-                            // TODO: finish respawn
                             if (player[j].health <= 0) {
-                                player[j].pos = Vector(0, 0, 400);
+                                player[j].pos = Vector(0, 0, 20);
                                 player[j].health = STARTING_HEALTH;
+                                player[j].dead = true;
+                                player[j].respawn_timer = RESPAWN_DELAY;
                             }
 
                             goto next;
@@ -361,7 +377,7 @@ next:;
                 draw.num_projectiles = num_projectiles;
             }
 
-            // timer
+            // game timer
             {
                 int seconds = game_timer / 1000;
                 sprintf(draw.timer, "%02d:%02d", seconds / 60, seconds % 60);

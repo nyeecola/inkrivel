@@ -272,12 +272,12 @@ void stbtt_initfont(void)
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 }
 
-void stbtt_print(float x, float y, char *text)
-{
+void stbtt_print(float x, float y, char *text, float r=1.0f, float g=1.0f, float b=1.0f) {
    // assume orthographic projection with units = screen pixels, origin at top left
    glEnable(GL_TEXTURE_2D);
    glBindTexture(GL_TEXTURE_2D, ftex);
    glBegin(GL_QUADS);
+   glColor3f(r, g, b);
    while (*text) {
       if (*text >= 32 && *text < 128) {
          stbtt_aligned_quad q;
@@ -294,6 +294,7 @@ void stbtt_print(float x, float y, char *text)
       }
       ++text;
    }
+   glColor3f(1, 1, 1);
    glEnd();
 }
 

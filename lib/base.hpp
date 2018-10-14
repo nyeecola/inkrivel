@@ -18,6 +18,9 @@ public:
     float hit_radius;
     int health;
     Model model;
+
+    bool dead;
+    float respawn_timer;
 };
 
 class Projectile {

@@ -267,8 +267,8 @@ int main(int argc, char **argv) {
         glClear(GL_DEPTH_BUFFER_BIT);
 
         // draw slimes
-        for (int i = 0; i < MAX_PLAYERS ; i++) {
-            if ( draw.online[i] ) {
+        for (int i = 0; i < MAX_PLAYERS; i++) {
+            if (draw.online[i] && draw.respawn_timer[i] == -1) {
                 GLfloat mat_ambient[] = { 0.1, 0.1, 0.1, 1.0 };
                 GLfloat mat_diffuse[] = { 0.3, 0.3, 0.3, 1.0 };
                 GLfloat mat_specular[] = { 0.6, 0.6, 0.6, 1.0 };
@@ -318,6 +318,10 @@ int main(int argc, char **argv) {
             prepareDrawFont();
 
             stbtt_print(TIMER_X, TIMER_Y, draw.timer);
+            if (draw.respawn_timer[my_id] >= 0) {
+                char text[2] = {(char) (draw.respawn_timer[my_id] + '0'), 0};
+                stbtt_print(RESPAWN_TIMER_X, RESPAWN_TIMER_Y, text, 1, 0, 0);
+            }
 
             endDrawFont();
         }
