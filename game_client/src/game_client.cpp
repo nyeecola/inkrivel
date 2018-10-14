@@ -245,7 +245,7 @@ int main(int argc, char **argv) {
             glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
             glPushMatrix();
             glScalef(MAP_SCALE, MAP_SCALE, MAP_SCALE);
-            drawModel(models.map);
+            drawModel(models.map, draw.respawn_timer[my_id] >= 0);
             glPopMatrix();
         }
 
@@ -261,7 +261,13 @@ int main(int argc, char **argv) {
                 g = 1;
                 b = 0;
             }
-            drawSphere(draw.projectiles_pos[i], draw.projectiles_radius[i], r, g, b);
+            if (draw.respawn_timer[my_id] >= 0) { // grayscale
+                float brightness = 0.2126*r + 0.7152*g + 0.0722*b;
+                drawSphere(draw.projectiles_pos[i], draw.projectiles_radius[i],
+                           brightness, brightness, brightness);
+            } else { // normal
+                drawSphere(draw.projectiles_pos[i], draw.projectiles_radius[i], r, g, b);
+            }
         }
 
         glClear(GL_DEPTH_BUFFER_BIT);
@@ -296,9 +302,11 @@ int main(int argc, char **argv) {
                         assert(false);
                 }
                 if (i % 2) {
-                    drawModel(models.pink_character[draw.model_id[i]]);
+                    drawModel(models.pink_character[draw.model_id[i]],
+                              draw.respawn_timer[my_id] >= 0);
                 } else {
-                    drawModel(models.green_character[draw.model_id[i]]);
+                    drawModel(models.green_character[draw.model_id[i]],
+                              draw.respawn_timer[my_id] >= 0);
                 }
 
                 glPopMatrix();

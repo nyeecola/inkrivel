@@ -40,6 +40,25 @@ void makeFrustum (double fov_y, double aspect_ratio, double front, double back) 
     glFrustum(-width, width, -height, height, front, back);
 }
 
+uint32_t getLuminance(uint32_t pixel) {
+    float r = pixel & 0x000000FF;
+    float g = (pixel & 0x0000FF00) >> 8;
+    float b = (pixel & 0x00FF0000) >> 16;
+    r /= 255;
+    g /= 255;
+    b /= 255;
+
+    float luminance = 0.2126*r + 0.7152*g + 0.0722*b;
+    int luminance_int = (int) (luminance * 0xFF);
+
+    pixel = 0xFF000000;
+    pixel |= luminance_int;
+    pixel |= luminance_int << 8;
+    pixel |= luminance_int << 16;
+
+    return pixel;
+}
+
 
 Model loadWavefrontModel(const char *obj_filename, const char *texture_filename, FaceType face_type) {
     Model model = {};
@@ -52,16 +71,46 @@ Model loadWavefrontModel(const char *obj_filename, const char *texture_filename,
 
     if (face_type == VERTEX_ALL || face_type == VERTEX_TEXTURE) {
         // NOTE: this can be freed if it`s not a map model
-        SDL_Surface *sur = IMG_Load(texture_filename);
-        assert(sur);
-        glGenTextures(1, &model.texture_id);
-        glBindTexture(GL_TEXTURE_2D, model.texture_id);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexImage2D(GL_TEXTURE_2D, 0, 4, 1024, 1024, 0, GL_RGBA, GL_UNSIGNED_BYTE, sur->pixels);
-        glBindTexture(GL_TEXTURE_2D, 0);
 
-        model.texture_image = sur;
+        // normal texture
+        {
+            SDL_Surface *sur = IMG_Load(texture_filename);
+            assert(sur);
+
+            glGenTextures(1, &model.texture_id);
+            glBindTexture(GL_TEXTURE_2D, model.texture_id);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexImage2D(GL_TEXTURE_2D, 0, 4, 1024, 1024, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                         sur->pixels);
+            glBindTexture(GL_TEXTURE_2D, 0);
+
+            model.texture_image = sur;
+        }
+
+        // black-white version of texture
+        {
+            SDL_Surface *bw_sur = IMG_Load(texture_filename);
+
+            int w = bw_sur->w;
+            int h = bw_sur->h;
+            int size = w * h;
+
+            uint32_t *pixels = (uint32_t *) bw_sur->pixels;
+
+            for (int i = 0; i < size; i++) {
+                uint32_t pixel = getLuminance(pixels[i]);
+                pixels[i] = pixel;
+            }
+
+            glGenTextures(1, &model.texture_bw_id);
+            glBindTexture(GL_TEXTURE_2D, model.texture_bw_id);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1024, 1024, 0, GL_RGBA,
+                         GL_UNSIGNED_BYTE, bw_sur->pixels);
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
     }
 
     FILE *f = fopen(obj_filename, "r");
@@ -112,8 +161,12 @@ Model loadWavefrontModel(const char *obj_filename, const char *texture_filename,
 }
 
 
-void drawModel(Model model) {
-    glBindTexture(GL_TEXTURE_2D, model.texture_id);
+void drawModel(Model model, bool grayscale = false) {
+    if (grayscale) {
+        glBindTexture(GL_TEXTURE_2D, model.texture_bw_id);
+    } else {
+        glBindTexture(GL_TEXTURE_2D, model.texture_id);
+    }
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
     for (int i = 0; i < model.num_faces; i++) {
@@ -240,11 +293,28 @@ void paintCircle(Model map_model, float map_scale, Face *paint_face, Vector cent
     }
 
     if (opengl) {
+        // normal texture
         glBindTexture(GL_TEXTURE_2D, map_model.texture_id);
         glTexSubImage2D(GL_TEXTURE_2D, 0,
-                tex_x * 1023 - MAX_INK_SPOT_RADIUS / 2, tex_y * 1023 - MAX_INK_SPOT_RADIUS / 2,
+                tex_x * 1023 - MAX_INK_SPOT_RADIUS / 2,
+                tex_y * 1023 - MAX_INK_SPOT_RADIUS / 2,
                 MAX_INK_SPOT_RADIUS, MAX_INK_SPOT_RADIUS, GL_RGBA, GL_UNSIGNED_BYTE,
                 (const void *) ink_spot);
+
+        for (int k1 = 0; k1 < MAX_INK_SPOT_RADIUS; k1++) {
+            for (int k2 = 0; k2 < MAX_INK_SPOT_RADIUS; k2++) {
+                ink_spot[k1][k2] = getLuminance(ink_spot[k1][k2]);
+            }
+        }
+
+        // black-white texture
+        glBindTexture(GL_TEXTURE_2D, map_model.texture_bw_id);
+        glTexSubImage2D(GL_TEXTURE_2D, 0,
+                tex_x * 1023 - MAX_INK_SPOT_RADIUS / 2,
+                tex_y * 1023 - MAX_INK_SPOT_RADIUS / 2,
+                MAX_INK_SPOT_RADIUS, MAX_INK_SPOT_RADIUS, GL_RGBA, GL_UNSIGNED_BYTE,
+                (const void *) ink_spot);
+
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 }
