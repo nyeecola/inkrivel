@@ -159,6 +159,29 @@ int main(int argc, char **argv) {
                     projectiles[num_projectiles].speed = 0.03;
                     projectiles[num_projectiles].team = id % 2;
 
+                    uint8_t damage = 0;
+                    switch (draw.model_id[id]){
+                        case TEST:
+                            damage = TEST_PROJECTILE_DAMAGE;
+                            break;
+                        case ROLO:
+                            damage = ROLO_PROJECTILE_DAMAGE;
+                            break;
+                        case ASSAULT:
+                            damage = ASSAULT_PROJECTILE_DAMAGE;
+                            break;
+                        case SNIPER:
+                            damage = SNIPER_PROJECTILE_DAMAGE;
+                            break;
+                        case BUCKET:
+                            damage = BUCKET_PROJECTILE_DAMAGE;
+                            break;
+                        default:
+                            assert(false);
+                    }
+
+                    projectiles[num_projectiles].damage = damage;
+
                     num_projectiles++;
                 }
                 player[id].dir.normalize();
@@ -237,27 +260,21 @@ int main(int argc, char **argv) {
                         if (!online[j] || projectiles[i].team == (j % 2)) continue;
 
                         float offset_z = 0;
-                        int damage = 0;
                         switch (draw.model_id[j]) {
                             case TEST:
                                 offset_z = TEST_HITBOX_Z_OFFSET; 
-                                damage = TEST_PROJECTILE_DAMAGE;
                                 break;
                             case ROLO:
                                 offset_z = ROLO_HITBOX_Z_OFFSET; 
-                                damage = ROLO_PROJECTILE_DAMAGE;
                                 break;
                             case ASSAULT:
                                 offset_z = ASSAULT_HITBOX_Z_OFFSET; 
-                                damage = ASSAULT_PROJECTILE_DAMAGE;
                                 break;
                             case SNIPER:
                                 offset_z = SNIPER_HITBOX_Z_OFFSET; 
-                                damage = SNIPER_PROJECTILE_DAMAGE;
                                 break;
                             case BUCKET:
                                 offset_z = BUCKET_HITBOX_Z_OFFSET; 
-                                damage = BUCKET_PROJECTILE_DAMAGE;
                                 break;
                             default:
                                 assert(false);
@@ -274,7 +291,7 @@ int main(int argc, char **argv) {
                             num_projectiles--;
                             i--;
 
-                            player[j].health -= damage;
+                            player[j].health -= projectiles[i].damage;
 
                             // respawn
                             // TODO: finish respawn

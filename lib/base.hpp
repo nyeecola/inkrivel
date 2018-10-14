@@ -27,4 +27,5 @@ public:
     float radius;
     float speed;
     uint8_t team;
+    uint8_t damage;
 };
