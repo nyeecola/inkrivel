@@ -150,7 +150,7 @@ size_t state_response(void *ptr, size_t size, size_t nmemb, void *stream){
         Mix_CloseAudio();
         char player_id_str[3];
         sprintf(player_id_str, "%d", player_id);
-        char * const args[] = {"game_client", player_id_str};
+        char * const args[] = {"game_client", player_id_str, NULL};
         assert(execvp("../game_client/bin/game_client", args) >= 0);
     }
 
