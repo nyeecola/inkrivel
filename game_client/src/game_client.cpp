@@ -182,21 +182,16 @@ int main(int argc, char **argv) {
         // apply paint
         // TODO: be careful with order of packets
         for (uint32_t i = 0; i < draw.num_paint_points; i++) {
-            uint8_t r, g, b;
+            uint32_t color;
             if (draw.paint_points[i].team) {
-                r = 0xFF;
-                g = 0x1F;
-                b = 0xFF;
+                color = 0xFFFF1FFF;
             } else {
-                r = 0x1F;
-                g = 0xFF;
-                b = 0x1F;
+                color = 0xFF1FFF1F;
             }
 
-            paintCircle(models.map, MAP_SCALE,
-                        &models.map.faces[draw.paint_points[i].face],
+            paintCircle(models.map, models.map.faces[draw.paint_points[i].face],
                         draw.paint_points[i].pos, draw.paint_points[i].radius,
-                        r, g, b, true);
+                        color, true);
         }
 
         // render

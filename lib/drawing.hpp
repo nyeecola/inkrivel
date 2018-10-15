@@ -240,83 +240,73 @@ void drawSphere(Vector center, float radius, float r, float g, float b) {
 // TODO: stop assuming the next line
 // NOTE: assumes texture size is 1024x1024
 // NOTE: max radius for now is 100
+// NOTE: color must be in 0xFFBBGGRR format
 #define MAX_INK_SPOT_RADIUS 100
-void paintCircle(Model map_model, float map_scale, Face *paint_face, Vector center, float radius, uint8_t r, uint8_t g, uint8_t b, bool opengl) {
+void paintCircle(Model map_model, Face paint_face, Vector center, float radius, uint32_t color, bool opengl) {
     assert(radius <= 100);
 
-    Vector v0 = map_scale * map_model.vertices[paint_face->vertices[0]];
-    Vector v1 = map_scale * map_model.vertices[paint_face->vertices[1]];
-    Vector v2 = map_scale * map_model.vertices[paint_face->vertices[2]];
+    Vector v0 = MAP_SCALE * map_model.vertices[paint_face.vertices[0]];
+    Vector v1 = MAP_SCALE * map_model.vertices[paint_face.vertices[1]];
+    Vector v2 = MAP_SCALE * map_model.vertices[paint_face.vertices[2]];
 
     float u, v, w;
     barycentric(center, v0, v1, v2, u, v, w);
 
-    TextureCoord tex_v0 = map_model.texture_coords[paint_face->texture_coords[0]];
-    TextureCoord tex_v1 = map_model.texture_coords[paint_face->texture_coords[1]];
-    TextureCoord tex_v2 = map_model.texture_coords[paint_face->texture_coords[2]];
+    TextureCoord tex_v0 = map_model.texture_coords[paint_face.texture_coords[0]];
+    TextureCoord tex_v1 = map_model.texture_coords[paint_face.texture_coords[1]];
+    TextureCoord tex_v2 = map_model.texture_coords[paint_face.texture_coords[2]];
 
-    unsigned char *pixels = (unsigned char *) map_model.texture_image->pixels;
+    uint32_t *pixels = (uint32_t *) map_model.texture_image->pixels;
+
+    int diameter = (int) radius * 2;
+    int int_radius = (int) radius;
+    int *ink_spot = (int *) malloc(diameter * diameter * sizeof(*ink_spot));
 
     float tex_x, tex_y;
-    tex_x = u * tex_v0.x + v * tex_v1.x + w * tex_v2.x;
-    tex_y = u * tex_v0.y + v * tex_v1.y + w * tex_v2.y;
+    tex_x = (u * tex_v0.x + v * tex_v1.x + w * tex_v2.x) * 1023 - int_radius;
+    tex_y = (u * tex_v0.y + v * tex_v1.y + w * tex_v2.y) * 1023 - int_radius;
 
-    int ink_spot[MAX_INK_SPOT_RADIUS][MAX_INK_SPOT_RADIUS] = {};
-    for (int k1 = 0; k1 < MAX_INK_SPOT_RADIUS; k1++) {
-        for (int k2 = 0; k2 < MAX_INK_SPOT_RADIUS; k2++) {
-            int y = tex_y * 1023 - MAX_INK_SPOT_RADIUS/2 + k1;
-            int x = tex_x * 1023 - MAX_INK_SPOT_RADIUS/2 + k2;
+    for (int k1 = 0; k1 < diameter; k1++) {
+        for (int k2 = 0; k2 < diameter; k2++) {
+            int y = tex_y + k1;
+            int x = tex_x + k2;
 
             if (x > 1023 || x < 0 || y < 0 || y > 1023) continue;
 
-            if ((k1-MAX_INK_SPOT_RADIUS/2) * (k1-MAX_INK_SPOT_RADIUS/2)
-                + (k2-MAX_INK_SPOT_RADIUS/2) * (k2-MAX_INK_SPOT_RADIUS/2) <= radius * radius) {
-                // use paint color
-                ink_spot[k1][k2] = r;
-                ink_spot[k1][k2] |= g << 8;
-                ink_spot[k1][k2] |= b << 16;
-                ink_spot[k1][k2] |= 0xFF << 24;
-            } else {
-                // use previous color
-                ink_spot[k1][k2] = pixels[4 * (y * 1024 + x) + 0] << 0;
-                ink_spot[k1][k2] |= pixels[4 * (y * 1024 + x) + 1] << 8;
-                ink_spot[k1][k2] |= pixels[4 * (y * 1024 + x) + 2] << 16;
-                ink_spot[k1][k2] |= pixels[4 * (y * 1024 + x) + 3] << 24;
+            int k1_minus_radius = k1 - int_radius;
+            int k2_minus_radius = k2 - int_radius;
+            if (k1_minus_radius * k1_minus_radius +
+                    k2_minus_radius * k2_minus_radius <= radius * radius) {
+                // update texture image
+                pixels[y * 1024 + x] = color;
             }
 
-            // store current color
-            pixels[4 * (y * 1024 + x) + 0] = (char) (ink_spot[k1][k2]);
-            pixels[4 * (y * 1024 + x) + 1] = (char) (ink_spot[k1][k2] >> 8);
-            pixels[4 * (y * 1024 + x) + 2] = (char) (ink_spot[k1][k2] >> 16);
-            pixels[4 * (y * 1024 + x) + 3] = (char) (ink_spot[k1][k2] >> 24);
+            // set pixel color to match new texture color
+            ink_spot[k1 * diameter + k2] = pixels[y * 1024 + x];
         }
     }
 
     if (opengl) {
         // normal texture
         glBindTexture(GL_TEXTURE_2D, map_model.texture_id);
-        glTexSubImage2D(GL_TEXTURE_2D, 0,
-                tex_x * 1023 - MAX_INK_SPOT_RADIUS / 2,
-                tex_y * 1023 - MAX_INK_SPOT_RADIUS / 2,
-                MAX_INK_SPOT_RADIUS, MAX_INK_SPOT_RADIUS, GL_RGBA, GL_UNSIGNED_BYTE,
-                (const void *) ink_spot);
-
-        for (int k1 = 0; k1 < MAX_INK_SPOT_RADIUS; k1++) {
-            for (int k2 = 0; k2 < MAX_INK_SPOT_RADIUS; k2++) {
-                ink_spot[k1][k2] = getLuminance(ink_spot[k1][k2]);
-            }
-        }
+        glTexSubImage2D(GL_TEXTURE_2D, 0, tex_x, tex_y,
+                        diameter, diameter, GL_RGBA, GL_UNSIGNED_BYTE,
+                        (const void *) ink_spot);
 
         // black-white texture
+        for (int k1 = 0; k1 < diameter; k1++) {
+            for (int k2 = 0; k2 < diameter; k2++) {
+                ink_spot[k1 * diameter + k2] = getLuminance(ink_spot[k1*diameter+k2]);
+            }
+        }
         glBindTexture(GL_TEXTURE_2D, map_model.texture_bw_id);
-        glTexSubImage2D(GL_TEXTURE_2D, 0,
-                tex_x * 1023 - MAX_INK_SPOT_RADIUS / 2,
-                tex_y * 1023 - MAX_INK_SPOT_RADIUS / 2,
-                MAX_INK_SPOT_RADIUS, MAX_INK_SPOT_RADIUS, GL_RGBA, GL_UNSIGNED_BYTE,
-                (const void *) ink_spot);
-
+        glTexSubImage2D(GL_TEXTURE_2D, 0, tex_x, tex_y,
+                        diameter, diameter, GL_RGBA, GL_UNSIGNED_BYTE,
+                        (const void *) ink_spot);
         glBindTexture(GL_TEXTURE_2D, 0);
     }
+
+    free(ink_spot);
 }
 
 #ifndef STB_TRUETYPE_IMPLEMENTATION

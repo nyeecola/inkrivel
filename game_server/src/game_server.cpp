@@ -59,6 +59,8 @@ void *listenInputs(void *arg) {
                 exit(1);
             }
         }
+
+        usleep(500);
     }
 
     return NULL;
@@ -113,6 +115,8 @@ int main(int argc, char **argv) {
 
         // do tick
         if (accumulated_time > TICK_TIME) {
+            uint64_t tick_start = getTimestamp();
+
             global_buffer_index = !global_buffer_index;
             usleep(THREAD_MUTEX_DELAY); // polite thread safety mechanism
 
@@ -224,21 +228,15 @@ int main(int argc, char **argv) {
                     pp.radius = 40;
                     draw.paint_points[draw.num_paint_points++] = pp;
 
-                    uint8_t r, g, b;
+                    uint32_t color;
                     if (id % 2) {
-                        r = 0xFF;
-                        g = 0x1F;
-                        b = 0xFF;
+                        color = 0xFFFF1FFF;
                     } else {
-                        r = 0x1F;
-                        g = 0xFF;
-                        b = 0x1F;
+                        color = 0xFF1FFF1F;
                     }
 
-                    paintCircle(map.model, MAP_SCALE,
-                                &map.model.faces[pp.face],
-                                pp.pos, pp.radius,
-                                r, g, b, false);
+                    paintCircle(map.model, map.model.faces[pp.face],
+                                pp.pos, pp.radius, color, false);
                 }
 
                 // TODO: get this from lobby server
@@ -339,21 +337,15 @@ int main(int argc, char **argv) {
                                 pp.radius = 40;
                                 draw.paint_points[draw.num_paint_points++] = pp;
 
-                                uint8_t r, g, b;
+                                uint32_t color;
                                 if (pp.team) {
-                                    r = 0xFF;
-                                    g = 0x1F;
-                                    b = 0xFF;
+                                    color = 0xFFFF1FFF;
                                 } else {
-                                    r = 0x1F;
-                                    g = 0xFF;
-                                    b = 0x1F;
+                                    color = 0xFF1FFF1F;
                                 }
 
-                                paintCircle(map.model, MAP_SCALE,
-                                        &map.model.faces[pp.face],
-                                        pp.pos, pp.radius,
-                                        r, g, b, false);
+                                paintCircle(map.model, map.model.faces[pp.face],
+                                            pp.pos, pp.radius, color, false);
                             }
 
                             for (int j = i; j < num_projectiles - 1; j++) {
@@ -394,6 +386,9 @@ next:;
             // end of tick
             draw.frame = tick_count++;
 
+            uint64_t tick_end = getTimestamp();
+            printf("Tick time: %ums\n", tick_end - tick_start);
+
             for(int i = 0; i < MAX_PLAYERS; i++) {
                 if (online[i]) {
                     if ( sendto(socket_fd, &draw, sizeof(draw), 0, &player_address[i], sizeof(sockaddr)) != ERROR ) {
@@ -409,6 +404,8 @@ next:;
 
             accumulated_time -= TICK_TIME;
         }
+
+        usleep(500);
     }
 
     close(socket_fd);

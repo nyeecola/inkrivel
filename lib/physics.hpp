@@ -114,7 +114,7 @@ Quat getRotationQuat(const Vector& from, const Vector& to) {
 // https://gamedev.stackexchange.com/questions/23743/whats-the-most-efficient-way-to-find-barycentric-coordinates
 // Compute barycentric coordinates (u, v, w) for
 // point p with respect to triangle (a, b, c)
-void barycentric(Vector p, Vector a, Vector b, Vector c, float &u, float &v, float &w)
+inline void barycentric(Vector p, Vector a, Vector b, Vector c, float &u, float &v, float &w)
 {
     Vector v0 = b - a, v1 = c - a, v2 = p - a;
     float d00 = v0.dot(v0);
@@ -150,14 +150,14 @@ bool projectileCollidesWithMap(Map map, Projectile projectile, Vector& paint_pos
             normal = normal * -1;
         }
 
+        Vector dir = projectile.dir + Vector(0, 0, -GRAVITY);
         Vector intersection;
-        bool intersect = rayIntersectsTriangle(map, projectile.pos,
-                                               projectile.dir + Vector(0, 0, -GRAVITY),
+        bool intersect = rayIntersectsTriangle(map, projectile.pos, dir,
                                                cur, intersection);
         if (intersect) {
             Vector tmp_v = intersection - projectile.pos;
             float mag = tmp_v.len();
-            if (mag < projectile.speed) {
+            if (mag < dir.len() * projectile.speed) {
                 intersects = true;
 
                 if (mag < min_intersection_mag) {
