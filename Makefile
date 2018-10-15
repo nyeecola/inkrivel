@@ -6,8 +6,10 @@ compile_only: FORCE
 
 server_run: FORCE
 	@make --no-print-directory -C chat run_server &
-	@make --no-print-directory -C game_server run &
 	@make --no-print-directory -C server
+
+game_server_run: FORCE
+	@make --no-print-directory -C game_server run
 
 client_run: FORCE
 	@make --no-print-directory -C game_client & 

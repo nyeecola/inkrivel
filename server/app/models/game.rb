@@ -23,6 +23,7 @@ class Game < ApplicationRecord
   def start
     update(state: 'playing')
     game_players.update_all(state: 'playing')
+    start_game_server
   end
 
 
@@ -34,5 +35,11 @@ class Game < ApplicationRecord
     end
 
     result
+  end
+
+  private
+
+  def start_game_server
+    Thread.new { %x(make -C ../ game_server_run) }
   end
 end
