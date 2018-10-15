@@ -159,14 +159,52 @@ int main(int argc, char **argv) {
                     projectiles[num_projectiles].speed = 0.03;
                     projectiles[num_projectiles].team = id % 2;
 
+                    uint8_t damage = 0;
+                    switch (draw.model_id[id]){
+                        case TEST:
+                            damage = TEST_PROJECTILE_DAMAGE;
+                            break;
+                        case ROLO:
+                            damage = ROLO_PROJECTILE_DAMAGE;
+                            break;
+                        case ASSAULT:
+                            damage = ASSAULT_PROJECTILE_DAMAGE;
+                            break;
+                        case SNIPER:
+                            damage = SNIPER_PROJECTILE_DAMAGE;
+                            break;
+                        case BUCKET:
+                            damage = BUCKET_PROJECTILE_DAMAGE;
+                            break;
+                        default:
+                            assert(false);
+                    }
+
+                    projectiles[num_projectiles].damage = damage;
+
                     num_projectiles++;
                 }
                 player[id].dir.normalize();
                 player[id].dir *= player[id].speed;
             }
 
+            // player-related simulation
             for(int id = 0; id < MAX_PLAYERS; id++) {
                 if (!online[id]) continue;
+
+                // respawn
+                if (player[id].dead) {
+                    player[id].respawn_timer -= (float) TICK_TIME / 1000.0f;
+                    if (player[id].respawn_timer < 0) {
+                        player[id].dead = false;
+                        draw.respawn_timer[id] = -1;
+                    } else {
+                        draw.respawn_timer[id] = (int) player[id].respawn_timer;
+                        continue;
+                    }
+                } else {
+                    draw.respawn_timer[id] = -1;
+                }
 
                 // collision
                 Vector max_z = {0, 0, -200};
@@ -237,27 +275,21 @@ int main(int argc, char **argv) {
                         if (!online[j] || projectiles[i].team == (j % 2)) continue;
 
                         float offset_z = 0;
-                        int damage = 0;
                         switch (draw.model_id[j]) {
                             case TEST:
                                 offset_z = TEST_HITBOX_Z_OFFSET; 
-                                damage = TEST_PROJECTILE_DAMAGE;
                                 break;
                             case ROLO:
                                 offset_z = ROLO_HITBOX_Z_OFFSET; 
-                                damage = ROLO_PROJECTILE_DAMAGE;
                                 break;
                             case ASSAULT:
                                 offset_z = ASSAULT_HITBOX_Z_OFFSET; 
-                                damage = ASSAULT_PROJECTILE_DAMAGE;
                                 break;
                             case SNIPER:
                                 offset_z = SNIPER_HITBOX_Z_OFFSET; 
-                                damage = SNIPER_PROJECTILE_DAMAGE;
                                 break;
                             case BUCKET:
                                 offset_z = BUCKET_HITBOX_Z_OFFSET; 
-                                damage = BUCKET_PROJECTILE_DAMAGE;
                                 break;
                             default:
                                 assert(false);
@@ -274,13 +306,14 @@ int main(int argc, char **argv) {
                             num_projectiles--;
                             i--;
 
-                            player[j].health -= damage;
+                            player[j].health -= projectiles[i].damage;
 
                             // respawn
-                            // TODO: finish respawn
                             if (player[j].health <= 0) {
-                                player[j].pos = Vector(0, 0, 400);
+                                player[j].pos = Vector(0, 0, 20);
                                 player[j].health = STARTING_HEALTH;
+                                player[j].dead = true;
+                                player[j].respawn_timer = RESPAWN_DELAY;
                             }
 
                             goto next;
@@ -344,7 +377,7 @@ next:;
                 draw.num_projectiles = num_projectiles;
             }
 
-            // timer
+            // game timer
             {
                 int seconds = game_timer / 1000;
                 sprintf(draw.timer, "%02d:%02d", seconds / 60, seconds % 60);

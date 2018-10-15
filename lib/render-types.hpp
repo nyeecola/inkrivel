@@ -45,6 +45,8 @@ class Model {
         int num_texture_coords;
         GLuint texture_id;
         SDL_Surface *texture_image;
+        GLuint texture_bw_id;
+        SDL_Surface *texture_bw_image;
 };
 
 enum FaceType {
@@ -64,8 +66,6 @@ void getPaintResults(Model map, float percentages[3]) {
     percentages[0] = percentages[1] = 0;
     for (int i = 0; i < size; i++) {
         uint32_t pixel = pixels[i];
-        //if (pixel == 0x1FFF1FFF) percentages[0]++;
-        //else if (pixel == 0xFF1FFFFF) percentages[1]++;
         if (pixel == 0xFF1FFF1F) percentages[0]++;
         else if (pixel == 0xFFFF1FFF) percentages[1]++;
     }

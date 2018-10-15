@@ -60,6 +60,7 @@ typedef struct {
     float mouse_angle[MAX_PLAYERS];
     CharacterId model_id[MAX_PLAYERS];
     Quat rotations[MAX_PLAYERS];
+    int8_t respawn_timer[MAX_PLAYERS]; // -1 means not dead
 
     uint32_t num_projectiles;
     Vector projectiles_pos[MAX_PROJECTILES];
