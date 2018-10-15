@@ -387,7 +387,7 @@ next:;
             draw.frame = tick_count++;
 
             uint64_t tick_end = getTimestamp();
-            printf("Tick time: %ums\n", tick_end - tick_start);
+            printf("Tick time: %lums\n", tick_end - tick_start);
 
             for(int i = 0; i < MAX_PLAYERS; i++) {
                 if (online[i]) {

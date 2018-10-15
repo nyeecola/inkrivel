@@ -8,8 +8,8 @@
 #define ever ;;
 #define MAX_PLAYERS 8
 // TODO: maybe do something about this
-#define MAX_PROJECTILES 400
-#define MAX_PAINT_POINTS 100
+#define MAX_PROJECTILES 130
+#define MAX_PAINT_POINTS 30
 
 #define MAX(a, b) ((a) > (b) ? a : b)
 #define MIN(a, b) ((a) < (b) ? a : b)
