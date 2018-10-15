@@ -114,7 +114,7 @@ Quat getRotationQuat(const Vector& from, const Vector& to) {
 // https://gamedev.stackexchange.com/questions/23743/whats-the-most-efficient-way-to-find-barycentric-coordinates
 // Compute barycentric coordinates (u, v, w) for
 // point p with respect to triangle (a, b, c)
-void barycentric(Vector p, Vector a, Vector b, Vector c, float &u, float &v, float &w)
+inline void barycentric(Vector p, Vector a, Vector b, Vector c, float &u, float &v, float &w)
 {
     Vector v0 = b - a, v1 = c - a, v2 = p - a;
     float d00 = v0.dot(v0);

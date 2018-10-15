@@ -189,8 +189,7 @@ int main(int argc, char **argv) {
                 color = 0xFF1FFF1F;
             }
 
-            paintCircle(models.map, MAP_SCALE,
-                        &models.map.faces[draw.paint_points[i].face],
+            paintCircle(models.map, models.map.faces[draw.paint_points[i].face],
                         draw.paint_points[i].pos, draw.paint_points[i].radius,
                         color, true);
         }

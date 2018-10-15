@@ -235,7 +235,7 @@ int main(int argc, char **argv) {
                         color = 0xFF1FFF1F;
                     }
 
-                    paintCircle(map.model, MAP_SCALE, &map.model.faces[pp.face],
+                    paintCircle(map.model, map.model.faces[pp.face],
                                 pp.pos, pp.radius, color, false);
                 }
 
@@ -344,10 +344,8 @@ int main(int argc, char **argv) {
                                     color = 0xFF1FFF1F;
                                 }
 
-                                paintCircle(map.model, MAP_SCALE,
-                                            &map.model.faces[pp.face],
-                                            pp.pos, pp.radius,
-                                            color, false);
+                                paintCircle(map.model, map.model.faces[pp.face],
+                                            pp.pos, pp.radius, color, false);
                             }
 
                             for (int j = i; j < num_projectiles - 1; j++) {
