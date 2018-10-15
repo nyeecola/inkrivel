@@ -140,7 +140,9 @@ size_t state_response(void *ptr, size_t size, size_t nmemb, void *stream){
     sscanf((const char *) ptr, "{\"state\":%s,\"waiting_players\":%d,\"player_id\":%d}",
            state, &waiting_players, &player_id);
 
-    if (!strcmp(state, "playing")) {
+    printf("%s %d %d\n", state, waiting_players, player_id);
+
+    if (!strncmp(state, "playing", 5)) {
         *waiting_to_play = false;
 
         Mix_HaltMusic();
@@ -519,7 +521,8 @@ int main(int argc, char **argv) {
                 ImGui::End();
             }
 
-            if (waiting_to_play) {
+            int monte_carlo = rand() % 100;
+            if (waiting_to_play && monte_carlo <= 4) {
                 curl = curl_easy_init();
                 char url[100];
                 sprintf(url, LOGIN_SERVER_IP LOGIN_SERVER_PORT "/games/state.json?account_id=%d", login_id);
