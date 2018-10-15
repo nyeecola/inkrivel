@@ -18,9 +18,6 @@
 #include "vector.hpp"
 #include "render-types.hpp"
 
-#define SERVER_ADDRESS "127.0.0.1"
-#define SERVER_PORT 27222
-
 #define INPUT_ID_WINDOW 200
 #define DRAW_ID_WINDOW 200
 

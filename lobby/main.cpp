@@ -18,13 +18,13 @@
 #include "imgui/imgui_impl_opengl3.cpp"
 
 #include "../chat/src/chat_client.cpp"
+#include "../lib/config.hpp"
 
 #include <curl/curl.h>
 
 #define MAX_MSG_LEN (100 + 20)
 
-#define LOGIN_SERVER_IP "127.0.0.1"
-#define LOGIN_SERVER_PORT ":3000"
+Mix_Music *music;
 
 static void GlfwErrorCallback(int error, const char* description) {
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
@@ -129,6 +129,26 @@ void *listenServer(void *arg) {
     }
 
     return NULL;
+}
+
+size_t state_response(void *ptr, size_t size, size_t nmemb, void *stream){
+    bool *waiting_to_play = (bool *) stream;
+
+    char state[50];
+    int waiting_players;
+    sscanf((const char *) ptr, "{\"state\":%s,\"waiting_players\":%d}",
+           state, &waiting_players);
+
+    if (!strcmp(state, "playing")) {
+        *waiting_to_play = false;
+
+        Mix_HaltMusic();
+        Mix_FreeMusic(music);
+        Mix_CloseAudio();
+        assert(execvp("../game_client/bin/game_client", 0) >= 0);
+    }
+
+    return size*nmemb;
 }
 
 size_t response(void *ptr, size_t size, size_t nmemb, void *stream){
@@ -253,7 +273,7 @@ int main(int argc, char **argv) {
 
     int socket_fd = -1;
 
-    Mix_Music *music = Mix_LoadMUS("../assets/lobby-bg-music.mp3");
+    music = Mix_LoadMUS("../assets/lobby-bg-music.mp3");
 
     char username[20] = {0};
     char password[50] = {0};
@@ -459,6 +479,7 @@ int main(int argc, char **argv) {
                             hs = curl_slist_append(hs, "Content-Type: application/json");
                             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hs);
                             curl_easy_setopt(curl, CURLOPT_URL, LOGIN_SERVER_IP LOGIN_SERVER_PORT "/games/join");
+                            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
 
                             CURLcode res = curl_easy_perform(curl);
                             if (res != CURLE_OK) printf("Failed to request join\n");
@@ -468,12 +489,6 @@ int main(int argc, char **argv) {
                             if (http_code == 200) {
                                 waiting_to_play = true;
                             }
-#if 0
-                            Mix_HaltMusic();
-                            Mix_FreeMusic(music);
-                            Mix_CloseAudio();
-                            assert(execvp("../game_client/bin/game_client", 0) >= 0);
-#endif
                         }
                     }
                 }
@@ -498,6 +513,23 @@ int main(int argc, char **argv) {
 #endif
                 }
                 ImGui::End();
+            }
+
+            if (waiting_to_play) {
+                curl = curl_easy_init();
+                char url[100];
+                sprintf(url, LOGIN_SERVER_IP LOGIN_SERVER_PORT "/games/state.json?account_id=%d", login_id);
+                curl_easy_setopt(curl, CURLOPT_URL, url);
+                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, state_response);
+                curl_easy_setopt(curl, CURLOPT_WRITEDATA, &waiting_to_play);
+
+                CURLcode res = curl_easy_perform(curl);
+                if (res != CURLE_OK) printf("Failed to request join\n");
+
+                long http_code = 0;
+                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+                if (http_code == 200) {
+                }
             }
         }
 

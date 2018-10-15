@@ -53,6 +53,13 @@
 #define LIGHT_END_X (15)
 #define LIGHT_END_Y (10)
 
+#define LOGIN_SERVER_IP "177.220.84.202"
+#define LOGIN_SERVER_PORT ":3000"
+
+#define SERVER_ADDRESS LOGIN_SERVER_IP
+#define SERVER_PORT 27222
+#define CHAT_SERVER_PORT 17555
+
 typedef enum {
     TEST,
     ROLO,

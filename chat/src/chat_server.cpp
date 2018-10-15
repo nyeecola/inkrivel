@@ -12,8 +12,8 @@
 #include <poll.h>
 
 #include "chat_types.h"
+#include "../../lib/config.hpp"
 
-#define SERVER_PORT 17555
 #define MAX_PENDING_CONNECTIONS 32
 #define MAX_CONNECTIONS 500
 
@@ -222,7 +222,7 @@ int main(int argc, char **argv) {
     struct sockaddr_in server_address = {0};
     server_address.sin_family = AF_INET;
     server_address.sin_addr.s_addr = INADDR_ANY;
-    server_address.sin_port = htons(SERVER_PORT);
+    server_address.sin_port = htons(CHAT_SERVER_PORT);
 
     // bind socket file descriptor to socket
     if (bind(listen_fd, (struct sockaddr *) &server_address,
