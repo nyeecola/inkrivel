@@ -136,8 +136,9 @@ size_t state_response(void *ptr, size_t size, size_t nmemb, void *stream){
 
     char state[50];
     int waiting_players;
-    sscanf((const char *) ptr, "{\"state\":%s,\"waiting_players\":%d}",
-           state, &waiting_players);
+    int player_id;
+    sscanf((const char *) ptr, "{\"state\":%s,\"waiting_players\":%d,\"player_id\":%d}",
+           state, &waiting_players, &player_id);
 
     if (!strcmp(state, "playing")) {
         *waiting_to_play = false;
@@ -145,7 +146,10 @@ size_t state_response(void *ptr, size_t size, size_t nmemb, void *stream){
         Mix_HaltMusic();
         Mix_FreeMusic(music);
         Mix_CloseAudio();
-        assert(execvp("../game_client/bin/game_client", 0) >= 0);
+        char player_id_str[3];
+        sprintf(player_id_str, "%d", player_id);
+        char * const args[] = {"game_client", player_id_str};
+        assert(execvp("../game_client/bin/game_client", args) >= 0);
     }
 
     return size*nmemb;
