@@ -42,6 +42,7 @@ int main(int argc, char **argv) {
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_LIGHTING);
+    glEnable(GL_NORMALIZE);
     //glDisable(GL_CULL_FACE);
     glShadeModel(GL_SMOOTH);
 
@@ -62,7 +63,11 @@ int main(int argc, char **argv) {
     models.pink_character[1] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_pink.png", VERTEX_ALL);
     models.pink_character[2] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_pink.png", VERTEX_ALL);
     models.pink_character[3] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_pink.png", VERTEX_ALL);
+#if 1
     models.map = loadWavefrontModel("../assets/map7.obj", "../assets/map2.png", VERTEX_ALL);
+#else
+    models.map = loadWavefrontModel("../assets/cherie.obj", "../assets/map2.png", VERTEX_ALL);
+#endif
 
     // TODO: MUST BE INITIALIZED PROPERLY
     InputPacket input = {0};
@@ -73,7 +78,19 @@ int main(int argc, char **argv) {
     bool running = true;
     input.running = true;
 
+    uint64_t last_time = getTimestamp();
+    uint64_t accumulated_time = 0;
+    float light_x = 0;
+    float light_y = 0;
+
     while (running) {
+        uint64_t cur_time = getTimestamp();
+        float dt = (float) (cur_time - last_time) / 1000.0f; // milliseconds
+        last_time = cur_time;
+
+        light_x += dt;
+        light_y += dt / 2;
+
         glEnable(GL_LIGHTING);
         glEnable(GL_CULL_FACE);
         glDisable(GL_BLEND);
@@ -207,17 +224,21 @@ int main(int argc, char **argv) {
         // draw sun
         {
             glEnable(GL_LIGHT0);
-            GLfloat light_position[] = { 0.8, 0.5, 5, 1 };
-            GLfloat ambient[] = { 0.1, 0.1, 0.1, 1 };
+            GLfloat light_position[] = {
+                (float) (LIGHT_END_X - LIGHT_START_X) * light_x / (float) TIMER_DURATION_IN_SECONDS,
+                (float) (LIGHT_END_Y - LIGHT_START_Y) * light_y / (float) TIMER_DURATION_IN_SECONDS,
+                8, 1
+            };
+            GLfloat ambient[] = { 0.2, 0.2, 0.2, 1 };
             GLfloat diffuse[] = { 1.0, 1.0, 1.0, 1 };
-            GLfloat specular[] = { 0.4, 0.4, 0.4, 1 };
+            GLfloat specular[] = { 0.6, 0.6, 0.6, 1 };
             glLightfv(GL_LIGHT0, GL_POSITION, light_position);
             glLightfv(GL_LIGHT0, GL_AMBIENT, ambient);
             glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse);
             glLightfv(GL_LIGHT0, GL_SPECULAR, specular);
 
             // default is (1, 0, 0)
-            glLighti(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 2.8);
+            glLighti(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 1);
             //glLighti(GL_LIGHT0, GL_LINEAR_ATTENUATION, 3);
             //glLighti(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 1);
         }
@@ -229,8 +250,8 @@ int main(int argc, char **argv) {
             GLfloat mat_diffuse[] = { 0.75, 0.6, 0.22, 1.0 };
             GLfloat mat_specular[] = { 0.6282, 0.556, 0.366, 1.0 };
 #else
-            GLfloat mat_ambient[] = { 0.17, 0.17, 0.17, 1.0 };
-            GLfloat mat_diffuse[] = { 0.5, 0.5, 0.5, 1.0 };
+            GLfloat mat_ambient[] = { 0.3, 0.3, 0.3, 1.0 };
+            GLfloat mat_diffuse[] = { 0.7, 0.7, 0.7, 1.0 };
             GLfloat mat_specular[] = { 0.5, 0.5, 0.5, 1.0 };
 #endif
             GLfloat mat_shininess[] = { 1 };
@@ -271,8 +292,8 @@ int main(int argc, char **argv) {
         for (int i = 0; i < MAX_PLAYERS; i++) {
             if (draw.online[i] && draw.respawn_timer[i] == -1) {
                 GLfloat mat_ambient[] = { 0.1, 0.1, 0.1, 1.0 };
-                GLfloat mat_diffuse[] = { 0.3, 0.3, 0.3, 1.0 };
-                GLfloat mat_specular[] = { 0.6, 0.6, 0.6, 1.0 };
+                GLfloat mat_diffuse[] = { 1.0, 1.0, 1.0, 1.0 };
+                GLfloat mat_specular[] = { 0.7, 0.7, 0.7, 1.0 };
                 GLfloat mat_shininess[] = { 1.0 };
                 glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, mat_ambient);
                 glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_diffuse);
