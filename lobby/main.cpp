@@ -140,8 +140,6 @@ size_t state_response(void *ptr, size_t size, size_t nmemb, void *stream){
     sscanf((const char *) ptr, "{\"state\":\"%[^\"]\",\"waiting_players\":%d,\"player_id\":%d}",
            state, &waiting_players, &player_id);
 
-    printf("%s %d %d\n", state, waiting_players, player_id);
-
     if (!strncmp(state, "playing", 5)) {
         *waiting_to_play = false;
 
