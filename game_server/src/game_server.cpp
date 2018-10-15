@@ -409,6 +409,8 @@ next:;
 
             accumulated_time -= TICK_TIME;
         }
+
+        usleep(500);
     }
 
     close(socket_fd);
