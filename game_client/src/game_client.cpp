@@ -79,7 +79,6 @@ int main(int argc, char **argv) {
     input.running = true;
 
     uint64_t last_time = getTimestamp();
-    uint64_t accumulated_time = 0;
     float light_x = 0;
     float light_y = 0;
 
