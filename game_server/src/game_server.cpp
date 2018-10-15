@@ -86,7 +86,11 @@ int main(int argc, char **argv) {
 
     // Create map
     Map map;
+#if 1
     map.model = loadWavefrontModel("../assets/map7.obj", "../assets/map2.png", VERTEX_ALL);
+#else
+    map.model = loadWavefrontModel("../assets/cherie.obj", "../assets/map2.png", VERTEX_ALL);
+#endif
     for(int i = 0; i < MAX_PLAYERS; i++){
         map.characterList[i] = &player[i];
     }
@@ -387,7 +391,7 @@ next:;
             draw.frame = tick_count++;
 
             uint64_t tick_end = getTimestamp();
-            printf("Tick time: %ums\n", tick_end - tick_start);
+            printf("Tick time: %lums\n", tick_end - tick_start);
 
             for(int i = 0; i < MAX_PLAYERS; i++) {
                 if (online[i]) {

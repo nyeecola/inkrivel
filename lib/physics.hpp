@@ -202,9 +202,9 @@ void collidesWithMap(Map map, Character& player, Vector& normal_sum, Vector& max
 
         // walls
         if (angle > 60 &&
-                (vertex0.z > next_pos.z ||
-                 vertex1.z > next_pos.z ||
-                 vertex2.z > next_pos.z)) {
+                (vertex0.z > next_pos.z + 0.03 ||
+                 vertex1.z > next_pos.z + 0.03 ||
+                 vertex2.z > next_pos.z + 0.03)) {
             bool collides = sphereCollidesTriangle(next_pos,
                     player.hit_radius,
                     vertex0, vertex1, vertex2);
