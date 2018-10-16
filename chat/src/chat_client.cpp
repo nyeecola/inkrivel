@@ -12,8 +12,7 @@
 
 #include "chat_types.h"
 
-#define SERVER_ADDRESS "127.0.0.1"
-#define SERVER_PORT 17555
+#include "../../lib/config.hpp"
 
 void chatConnect(int socket_fd, char name[20]) {
     Packet p;
@@ -74,7 +73,7 @@ int createSocket() {
     struct sockaddr_in server_address = {0};
     memcpy(&server_address.sin_addr.s_addr, server->h_addr_list[0], server->h_length);
     server_address.sin_family = AF_INET;
-    server_address.sin_port = htons(SERVER_PORT);
+    server_address.sin_port = htons(CHAT_SERVER_PORT);
 
     // connect to server
     int err = connect(socket_fd, (struct sockaddr *) &server_address, sizeof(server_address));

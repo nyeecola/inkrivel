@@ -8,8 +8,8 @@
 #define ever ;;
 #define MAX_PLAYERS 8
 // TODO: maybe do something about this
-#define MAX_PROJECTILES 130
-#define MAX_PAINT_POINTS 30
+#define MAX_PROJECTILES 200
+#define MAX_PAINT_POINTS 70
 
 #define MAX(a, b) ((a) > (b) ? a : b)
 #define MIN(a, b) ((a) < (b) ? a : b)
@@ -29,7 +29,7 @@
 
 #define TIMER_X SCREEN_WIDTH/2 - 42
 #define TIMER_Y SCREEN_HEIGHT - 30
-#define TIMER_DURATION_IN_SECONDS 30
+#define TIMER_DURATION_IN_SECONDS 190
 #define RESPAWN_TIMER_X SCREEN_WIDTH/2 - 12
 #define RESPAWN_TIMER_Y SCREEN_HEIGHT - 60
 #define RESPAWN_DELAY 6
@@ -52,6 +52,13 @@
 #define LIGHT_START_Y (-10)
 #define LIGHT_END_X (15)
 #define LIGHT_END_Y (10)
+
+#define LOGIN_SERVER_IP "177.220.84.202"
+#define LOGIN_SERVER_PORT ":3000"
+
+#define SERVER_ADDRESS LOGIN_SERVER_IP
+#define SERVER_PORT 27222
+#define CHAT_SERVER_PORT 17555
 
 typedef enum {
     TEST,
