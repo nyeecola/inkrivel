@@ -51,6 +51,7 @@ ActiveRecord::Schema.define(version: 2018_09_25_002253) do
     t.integer "game_id"
     t.integer "game_account_id"
     t.string "state"
+    t.integer "player_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["game_account_id"], name: "index_game_players_on_game_account_id"

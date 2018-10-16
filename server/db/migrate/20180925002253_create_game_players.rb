@@ -4,6 +4,7 @@ class CreateGamePlayers < ActiveRecord::Migration[5.2]
       t.references :game, foreign_key: true
       t.references :game_account, foreign_key: true
       t.string :state
+      t.integer :player_id
 
       t.timestamps
     end

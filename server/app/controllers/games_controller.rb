@@ -73,7 +73,7 @@ class GamesController < ApplicationController
       game = Game.create(map: Map.random, room_size: room_size, state: 'waiting')
     end
 
-    game.game_players.create(game_account: account.game_account, state: 'waiting')
+    game.game_players.create(game_account: account.game_account, state: 'waiting', player_id: game.next_player_id)
     respond_to do |format|
       format.json { render json: { game_id: game.id } }
     end
@@ -106,11 +106,16 @@ class GamesController < ApplicationController
       player.update(state: 'starting')
     end
 
+    json = {
+        state: game.state,
+        waiting_players: game.required_players,
+        player_id: player.player_id
+    }
+
+    puts json.to_s
+
     respond_to do |format|
-      format.json { render json: {
-          state: game.state,
-          waiting_players: game.required_players
-      } }
+      format.json { render json: json }
     end
   end
 
