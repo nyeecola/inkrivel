@@ -76,7 +76,6 @@ int main(int argc, char **argv) {
 
     const Uint8 *kb_state = SDL_GetKeyboardState(NULL);
     bool running = true;
-    input.running = true;
 
     uint64_t last_time = getTimestamp();
     float light_x = 0;
@@ -91,6 +90,7 @@ int main(int argc, char **argv) {
         light_y += dt / 2;
 
         glEnable(GL_LIGHTING);
+        glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         glDisable(GL_BLEND);
 
@@ -100,7 +100,6 @@ int main(int argc, char **argv) {
             while (SDL_PollEvent(&e)) {
                 if (e.type == SDL_QUIT) {
                     running = false;
-                    input.running = false;
                 }
                 if (e.type == SDL_MOUSEBUTTONDOWN) {
                     input.shooting = true;
@@ -134,6 +133,7 @@ int main(int argc, char **argv) {
         input.right = kb_state[SDL_SCANCODE_D];
         input.left = kb_state[SDL_SCANCODE_A];
         input.especial = kb_state[SDL_SCANCODE_E];
+        input.swimming = kb_state[SDL_SCANCODE_SPACE];
 
 #if 1
         if (sendto(socket_file_descriptor, &input, sizeof(input), 0, server_adapted_address, sizeof(server_address)) == ERROR) {
@@ -268,13 +268,13 @@ int main(int argc, char **argv) {
         for (uint32_t i = 0; i < draw.num_projectiles; i++) {
             float r, g, b;
             if (draw.projectiles_team[i]) {
-                r = 1;
-                g = 0;
-                b = 1;
+                r = 1 * 0.6;
+                g = 0 * 0.6;
+                b = 1 * 0.6;
             } else {
-                r = 0;
-                g = 1;
-                b = 0;
+                r = 0 * 0.6;
+                g = 1 * 0.6;
+                b = 0 * 0.6;
             }
             if (draw.respawn_timer[my_id] >= 0) { // grayscale
                 float brightness = 0.2126*r + 0.7152*g + 0.0722*b;
@@ -285,9 +285,9 @@ int main(int argc, char **argv) {
             }
         }
 
-        glClear(GL_DEPTH_BUFFER_BIT);
+        //glClear(GL_DEPTH_BUFFER_BIT);
 
-        // draw slimes
+        // draw players
         for (int i = 0; i < MAX_PLAYERS; i++) {
             if (draw.online[i] && draw.respawn_timer[i] == -1) {
                 GLfloat mat_ambient[] = { 0.1, 0.1, 0.1, 1.0 };
@@ -316,6 +316,11 @@ int main(int argc, char **argv) {
                     default:
                         assert(false);
                 }
+
+                if (input.swimming) {
+                    glTranslatef(0, 0, -0.4);
+                }
+
                 if (i % 2) {
                     drawModel(models.pink_character[draw.model_id[i]],
                               draw.respawn_timer[my_id] >= 0);
@@ -334,7 +339,34 @@ int main(int argc, char **argv) {
             }
         }
 
-        glClear(GL_DEPTH_BUFFER_BIT);
+        // draw ammo bar
+        if (input.swimming) {
+            assert(draw.ammo[my_id] >= 0);
+
+            float x = draw.pos[my_id].x;
+            float y = draw.pos[my_id].y;
+
+            float r, g, b;
+            if (my_id % 2) {
+                r = 1;
+                g = 0;
+                b = 1;
+            } else {
+                r = 0;
+                g = 1;
+                b = 0;
+            }
+            
+            float ratio = draw.ammo[my_id] / (float) STARTING_AMMO;
+
+            drawRect(x + AMMO_BOX_X_OFFSET, y + AMMO_BOX_Y_OFFSET,
+                     AMMO_BOX_WIDTH, AMMO_BOX_HEIGHT, 0, 0, 0);
+            drawRect(x + AMMO_BOX_X_OFFSET + AMMO_BOX_BORDER,
+                     y + AMMO_BOX_Y_OFFSET + AMMO_BOX_BORDER,
+                     AMMO_BOX_WIDTH - AMMO_BOX_BORDER * 2,
+                     (AMMO_BOX_HEIGHT - AMMO_BOX_BORDER * 2) * ratio, r, g, b);
+        }
+
 
         // font
         {

@@ -18,6 +18,11 @@ public:
     float hit_radius;
     int health;
     Model model;
+    int ammo;
+    int max_ammo;
+    int atk_delay; // in millis
+    int starting_atk_delay; // in millis
+    bool swimming;
 
     bool dead;
     float respawn_timer;

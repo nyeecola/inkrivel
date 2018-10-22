@@ -237,6 +237,23 @@ void drawSphere(Vector center, float radius, float r, float g, float b) {
     glPopMatrix();
 }
 
+void drawRect(float x, float y, float w, float h, float r, float g, float b) {
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glBegin(GL_QUADS);
+    glColor3f(r, g, b);
+    glVertex3f(x, y, 0);
+    glColor3f(r, g, b);
+    glVertex3f(x + w, y, 0);
+    glColor3f(r, g, b);
+    glVertex3f(x + w, y + h, 0);
+    glColor3f(r, g, b);
+    glVertex3f(x, y + h, 0);
+    glEnd();
+    glEnable(GL_LIGHTING);
+    glEnable(GL_DEPTH_TEST);
+}
+
 // TODO: stop assuming the next line
 // NOTE: assumes texture size is 1024x1024
 // NOTE: max radius for now is 100
@@ -359,6 +376,7 @@ void stbtt_print(float x, float y, char *text, float r=1.0f, float g=1.0f, float
 }
 
 void prepareDrawFont() {
+    glDisable(GL_DEPTH_TEST);
     glDisable(GL_LIGHTING);
     glDisable(GL_CULL_FACE);
     glEnable(GL_BLEND);

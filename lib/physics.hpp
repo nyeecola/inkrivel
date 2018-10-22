@@ -206,8 +206,8 @@ void collidesWithMap(Map map, Character& player, Vector& normal_sum, Vector& max
                  vertex1.z > next_pos.z + 0.03 ||
                  vertex2.z > next_pos.z + 0.03)) {
             bool collides = sphereCollidesTriangle(next_pos,
-                    player.hit_radius,
-                    vertex0, vertex1, vertex2);
+                                                   player.hit_radius,
+                                                   vertex0, vertex1, vertex2);
 
             if (collides) {
                 Vector v = player.pos - vertex0;
@@ -235,10 +235,7 @@ void collidesWithMap(Map map, Character& player, Vector& normal_sum, Vector& max
             for (int j = 0; j < 4; j++) {
                 bool intersect = rayIntersectsTriangle(map, sky[j], ground, cur, intersect_v);
                 if (intersect) {
-                    if (max_z.z < intersect_v.z) {
-                        max_z = intersect_v;
-                    }
-
+                    // only false if slime is out of bounds
                     if (rotation_points[j].z < intersect_v.z) {
                         rotation_points[j] = intersect_v;
                         rotation_normals[j] = normal;
@@ -249,10 +246,15 @@ void collidesWithMap(Map map, Character& player, Vector& normal_sum, Vector& max
             // DEBUG: this makes the slime paint the ground where it walks
             Vector sky_slime = {player.pos.x, player.pos.y, 200};
             bool intersect = rayIntersectsTriangle(map, sky_slime, ground,
-                    cur, intersect_v);
-            if (intersect && intersect_v.z > paint_max_z.z) {
-                paint_max_z = intersect_v;
-                paint_face = i;
+                                                   cur, intersect_v);
+            if (intersect) {
+                if (max_z.z < intersect_v.z) { // dont move this out of collidesWithMap
+                    max_z = intersect_v;
+                }
+                if (intersect_v.z > paint_max_z.z) {
+                    paint_max_z = intersect_v;
+                    paint_face = i;
+                }
             }
         }
     }
