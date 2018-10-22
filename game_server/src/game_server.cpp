@@ -88,8 +88,7 @@ int main(int argc, char **argv) {
         player[i].dir = {0, 0, 0};
         player[i].rotation = {0, 0, 0, 1};
         player[i].health = STARTING_HEALTH;
-        player[i].max_ammo = STARTING_AMMO;
-        player[i].ammo = player[i].max_ammo;
+        player[i].ammo = STARTING_AMMO;
         player[i].atk_delay = ATK_DELAY;
         player[i].starting_atk_delay = ATK_DELAY;
         player[i].swimming = false;
@@ -220,7 +219,7 @@ int main(int argc, char **argv) {
             for(int id = 0; id < MAX_PLAYERS; id++) {
                 if (!online[id]) continue;
 
-                draw.ammo[id] = player[id].ammo;
+                draw.ammo[id] = (int) player[id].ammo;
 
                 if (player[id].atk_delay > 0) {
                     player[id].atk_delay -= TICK_TIME;
@@ -278,7 +277,7 @@ int main(int argc, char **argv) {
                 // player ammo
                 if (player[id].swimming) {
                     if (player[id].ammo < STARTING_AMMO) {
-                        player[id].ammo += 1;
+                        player[id].ammo += AMMO_RECHARGE_RATE;
                     }
                 }
 
