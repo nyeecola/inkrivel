@@ -55,18 +55,21 @@ int main(int argc, char **argv) {
 
     // Load models
     Models models = {0};
-    models.green_character[0] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_green.png", VERTEX_ALL);
-    models.green_character[1] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_green.png", VERTEX_ALL);
-    models.green_character[2] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_green.png", VERTEX_ALL);
-    models.green_character[3] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_green.png", VERTEX_ALL);
-    models.pink_character[0] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_pink.png", VERTEX_ALL);
-    models.pink_character[1] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_pink.png", VERTEX_ALL);
-    models.pink_character[2] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_pink.png", VERTEX_ALL);
-    models.pink_character[3] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_pink.png", VERTEX_ALL);
-#if 1
-    models.map = loadWavefrontModel("../assets/map7.obj", "../assets/map2.png", VERTEX_ALL);
+    models.green_character[0] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_green.png", VERTEX_ALL, 1024);
+    models.green_character[1] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_green.png", VERTEX_ALL, 1024);
+    models.green_character[2] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_green.png", VERTEX_ALL, 1024);
+    models.green_character[3] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_green.png", VERTEX_ALL, 1024);
+    models.pink_character[0] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_pink.png", VERTEX_ALL, 1024);
+    models.pink_character[1] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_pink.png", VERTEX_ALL, 1024);
+    models.pink_character[2] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_pink.png", VERTEX_ALL, 1024);
+    models.pink_character[3] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_pink.png", VERTEX_ALL, 1024);
+
+#if 0
+    models.map = loadWavefrontModel("../assets/map7.obj", "../assets/map3.png",
+                                    VERTEX_ALL, MAP_TEXTURE_SIZE);
 #else
-    models.map = loadWavefrontModel("../assets/cherie.obj", "../assets/map2.png", VERTEX_ALL);
+    models.map = loadWavefrontModel("../assets/cherie.obj", "../assets/map3.png",
+                                    VERTEX_ALL, MAP_TEXTURE_SIZE);
 #endif
 
     // TODO: MUST BE INITIALIZED PROPERLY

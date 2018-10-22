@@ -96,10 +96,12 @@ int main(int argc, char **argv) {
 
     // Create map
     Map map;
-#if 1
-    map.model = loadWavefrontModel("../assets/map7.obj", "../assets/map2.png", VERTEX_ALL);
+#if 0
+    map.model = loadWavefrontModel("../assets/map7.obj", "../assets/map3.png",
+                                   VERTEX_ALL, MAP_TEXTURE_SIZE);
 #else
-    map.model = loadWavefrontModel("../assets/cherie.obj", "../assets/map2.png", VERTEX_ALL);
+    map.model = loadWavefrontModel("../assets/cherie.obj", "../assets/map3.png",
+                                   VERTEX_ALL, MAP_TEXTURE_SIZE);
 #endif
     for(int i = 0; i < MAX_PLAYERS; i++){
         map.characterList[i] = &player[i];
@@ -274,13 +276,6 @@ int main(int argc, char **argv) {
                     draw.rotations[id] = player[id].rotation;
                 }
 
-                // player ammo
-                if (player[id].swimming) {
-                    if (player[id].ammo < STARTING_AMMO) {
-                        player[id].ammo += AMMO_RECHARGE_RATE;
-                    }
-                }
-
                 // player movement
                 {
                     if (player[id].dir.len() > player[id].speed) {
@@ -327,19 +322,27 @@ int main(int argc, char **argv) {
                             TextureCoord tex_v2 = map.model.texture_coords[ftc2];
 
                             int tex_x, tex_y;
-                            tex_x = (u * tex_v0.x + v * tex_v1.x + w * tex_v2.x) * 1023;
-                            tex_y = (u * tex_v0.y + v * tex_v1.y + w * tex_v2.y) * 1023;
+                            tex_x = (u * tex_v0.x + v * tex_v1.x + w * tex_v2.x) * (MAP_TEXTURE_SIZE-1);
+                            tex_y = (u * tex_v0.y + v * tex_v1.y + w * tex_v2.y) * (MAP_TEXTURE_SIZE-1);
 
                             uint32_t *pixels = (uint32_t *) map.model.texture_image->pixels;
 
                             if (id % 2) {
-                                if (pixels[tex_y * 1024 + tex_x] == 0xFFFF1FFF) {
+                                if (pixels[tex_y * MAP_TEXTURE_SIZE + tex_x] == 0xFFFF1FFF) {
+                                    // player ammo
+                                    if (player[id].ammo < STARTING_AMMO) {
+                                        player[id].ammo += AMMO_RECHARGE_RATE;
+                                    }
                                     player[id].dir *= SWIM_GOOD_FACTOR;
                                 } else {
                                     player[id].dir *= SWIM_BAD_FACTOR;
                                 }
                             } else {
-                                if (pixels[tex_y * 1024 + tex_x] == 0xFF1FFF1F) {
+                                if (pixels[tex_y * MAP_TEXTURE_SIZE + tex_x] == 0xFF1FFF1F) {
+                                    // player ammo
+                                    if (player[id].ammo < STARTING_AMMO) {
+                                        player[id].ammo += AMMO_RECHARGE_RATE;
+                                    }
                                     player[id].dir *= SWIM_GOOD_FACTOR;
                                 } else {
                                     player[id].dir *= SWIM_BAD_FACTOR;
