@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
     int num_players = atoi(argv[1]);
 
     for (int i = 0; i < num_players; i++) {
-        draw.model_id[i] = atoi(argv[i + 2]);
+        draw.model_id[i] = (CharacterId) atoi(argv[i + 2]);
     }
 
     socket_fd = createUDPSocket();
