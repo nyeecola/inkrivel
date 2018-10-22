@@ -86,6 +86,7 @@ int main(int argc, char **argv) {
         player[i].ammo = player[i].max_ammo;
         player[i].atk_delay = ATK_DELAY;
         player[i].starting_atk_delay = ATK_DELAY;
+        player[i].swimming = false;
     }
 
     // Create map
@@ -155,7 +156,8 @@ int main(int argc, char **argv) {
                 if (input.right) {
                     player[id].dir.x += 1;
                 }
-                if (input.shooting && player[id].atk_delay <= 0 && player[id].ammo) {
+                player[id].swimming = input.swimming;
+                if (input.shooting && !player[id].swimming && player[id].atk_delay <= 0 && player[id].ammo) {
                     player[id].atk_delay = player[id].starting_atk_delay;
 
                     // update ammo
@@ -233,11 +235,11 @@ int main(int argc, char **argv) {
                 }
 
                 // collision
-                Vector max_z = {0, 0, -200};
+                Vector player_z = {0, 0, -200};
                 Vector normal_sum = {0, 0, 0};
                 Vector paint_max_z = {0, 0, -200};
                 int paint_face;
-                collidesWithMap(map, player[id], normal_sum, max_z,
+                collidesWithMap(map, player[id], normal_sum, player_z,
                                 paint_max_z, paint_face);
 
                 // paint
@@ -272,15 +274,82 @@ int main(int argc, char **argv) {
                     draw.rotations[id] = player[id].rotation;
                 }
 
+                // player ammo
+                if (player[id].swimming) {
+                    if (player[id].ammo < STARTING_AMMO) {
+                        player[id].ammo += 1;
+                    }
+                }
+
                 // player movement
                 {
                     if (player[id].dir.len() > player[id].speed) {
                         player[id].dir.normalize();
                         player[id].dir *= player[id].speed;
                     }
+                    if (player[id].swimming) {
+                        Vector max_z = {0, 0, -200};
+                        int face_max_z = -1;
+                        for (int i = 0; i < map.model.num_faces; i++) {
+                            Face *cur = &map.model.faces[i];
+
+                            Vector ground = {0, 0, -1};
+                            Vector sky = {player[id].pos.x + player[id].hit_radius,
+                                          player[id].pos.y, 200};
+                            Vector intersection;
+                            bool intersect = rayIntersectsTriangle(map, sky, ground,
+                                                                   cur, intersection);
+
+                            if (intersect && intersection.z > max_z.z) {
+                                max_z = intersection;
+                                face_max_z = i;
+                            }
+                        }
+
+                        if (face_max_z != -1) {
+                            Face paint_face = map.model.faces[face_max_z];
+
+                            int fv0 = paint_face.vertices[0];
+                            int fv1 = paint_face.vertices[1];
+                            int fv2 = paint_face.vertices[2];
+                            Vector v0 = MAP_SCALE * map.model.vertices[fv0];
+                            Vector v1 = MAP_SCALE * map.model.vertices[fv1];
+                            Vector v2 = MAP_SCALE * map.model.vertices[fv2];
+
+                            float u, v, w;
+                            barycentric(max_z, v0, v1, v2, u, v, w);
+
+                            int ftc0 = paint_face.texture_coords[0];
+                            int ftc1 = paint_face.texture_coords[1];
+                            int ftc2 = paint_face.texture_coords[2];
+                            TextureCoord tex_v0 = map.model.texture_coords[ftc0];
+                            TextureCoord tex_v1 = map.model.texture_coords[ftc1];
+                            TextureCoord tex_v2 = map.model.texture_coords[ftc2];
+
+                            int tex_x, tex_y;
+                            tex_x = (u * tex_v0.x + v * tex_v1.x + w * tex_v2.x) * 1023;
+                            tex_y = (u * tex_v0.y + v * tex_v1.y + w * tex_v2.y) * 1023;
+
+                            uint32_t *pixels = (uint32_t *) map.model.texture_image->pixels;
+
+                            if (id % 2) {
+                                if (pixels[tex_y * 1024 + tex_x] == 0xFFFF1FFF) {
+                                    player[id].dir *= SWIM_GOOD_FACTOR;
+                                } else {
+                                    player[id].dir *= SWIM_BAD_FACTOR;
+                                }
+                            } else {
+                                if (pixels[tex_y * 1024 + tex_x] == 0xFF1FFF1F) {
+                                    player[id].dir *= SWIM_GOOD_FACTOR;
+                                } else {
+                                    player[id].dir *= SWIM_BAD_FACTOR;
+                                }
+                            }
+                        }
+                    }
                     player[id].pos += player[id].dir;
-                    if (max_z.z > 0) {
-                        player[id].pos.z += 0.5*(max_z.z - player[id].pos.z);
+                    if (player_z.z > 0) {
+                        player[id].pos.z += 0.5*(player_z.z - player[id].pos.z);
                     }
                     draw.pos[id] = player[id].pos;
                 }

@@ -76,7 +76,6 @@ int main(int argc, char **argv) {
 
     const Uint8 *kb_state = SDL_GetKeyboardState(NULL);
     bool running = true;
-    input.running = true;
 
     uint64_t last_time = getTimestamp();
     float light_x = 0;
@@ -91,6 +90,7 @@ int main(int argc, char **argv) {
         light_y += dt / 2;
 
         glEnable(GL_LIGHTING);
+        glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         glDisable(GL_BLEND);
 
@@ -100,7 +100,6 @@ int main(int argc, char **argv) {
             while (SDL_PollEvent(&e)) {
                 if (e.type == SDL_QUIT) {
                     running = false;
-                    input.running = false;
                 }
                 if (e.type == SDL_MOUSEBUTTONDOWN) {
                     input.shooting = true;
@@ -134,6 +133,7 @@ int main(int argc, char **argv) {
         input.right = kb_state[SDL_SCANCODE_D];
         input.left = kb_state[SDL_SCANCODE_A];
         input.especial = kb_state[SDL_SCANCODE_E];
+        input.swimming = kb_state[SDL_SCANCODE_SPACE];
 
 #if 1
         if (sendto(socket_file_descriptor, &input, sizeof(input), 0, server_adapted_address, sizeof(server_address)) == ERROR) {
@@ -285,9 +285,9 @@ int main(int argc, char **argv) {
             }
         }
 
-        glClear(GL_DEPTH_BUFFER_BIT);
+        //glClear(GL_DEPTH_BUFFER_BIT);
 
-        // draw slimes
+        // draw players
         for (int i = 0; i < MAX_PLAYERS; i++) {
             if (draw.online[i] && draw.respawn_timer[i] == -1) {
                 GLfloat mat_ambient[] = { 0.1, 0.1, 0.1, 1.0 };
@@ -316,6 +316,11 @@ int main(int argc, char **argv) {
                     default:
                         assert(false);
                 }
+
+                if (input.swimming) {
+                    glTranslatef(0, 0, -0.4);
+                }
+
                 if (i % 2) {
                     drawModel(models.pink_character[draw.model_id[i]],
                               draw.respawn_timer[my_id] >= 0);
@@ -335,7 +340,7 @@ int main(int argc, char **argv) {
         }
 
         // draw ammo bar
-        if (draw.ammo[my_id] < STARTING_AMMO) {
+        if (input.swimming) {
             assert(draw.ammo[my_id] >= 0);
 
             float x = draw.pos[my_id].x;
@@ -362,7 +367,6 @@ int main(int argc, char **argv) {
                      (AMMO_BOX_HEIGHT - AMMO_BOX_BORDER * 2) * ratio, r, g, b);
         }
 
-        glClear(GL_DEPTH_BUFFER_BIT);
 
         // font
         {

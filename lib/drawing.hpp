@@ -376,6 +376,7 @@ void stbtt_print(float x, float y, char *text, float r=1.0f, float g=1.0f, float
 }
 
 void prepareDrawFont() {
+    glDisable(GL_DEPTH_TEST);
     glDisable(GL_LIGHTING);
     glDisable(GL_CULL_FACE);
     glEnable(GL_BLEND);

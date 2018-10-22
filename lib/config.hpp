@@ -14,6 +14,9 @@
 #define MAX(a, b) ((a) > (b) ? a : b)
 #define MIN(a, b) ((a) < (b) ? a : b)
 
+#define SWIM_GOOD_FACTOR 2
+#define SWIM_BAD_FACTOR 0.5
+
 #define AMMO_BOX_X_OFFSET 0.3
 #define AMMO_BOX_Y_OFFSET 0.1
 #define AMMO_BOX_WIDTH 0.2
