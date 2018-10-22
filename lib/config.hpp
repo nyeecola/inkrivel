@@ -7,6 +7,7 @@
 #define ERROR -1
 #define ever ;;
 #define MAX_PLAYERS 8
+
 // TODO: maybe do something about this
 #define MAX_PROJECTILES 200
 #define MAX_PAINT_POINTS 70
@@ -73,9 +74,9 @@
 #define CHAT_SERVER_PORT 17555
 
 typedef enum {
-    TEST,
-    ROLO,
+    ROLO = 0,
     SNIPER,
     ASSAULT,
     BUCKET,
+    TEST,
 } CharacterId;

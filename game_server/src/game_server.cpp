@@ -33,7 +33,7 @@ PacketBuffer global_input_buffer[2] = { PacketBuffer(INPUT, MAX_INPUT_BUFFER_SIZ
                                         PacketBuffer(INPUT, MAX_INPUT_BUFFER_SIZE) };
 bool should_die = false;
 bool online[MAX_PLAYERS] = {0};
-// TODO: MUST BE INITIALIZED PROPERLY
+
 DrawPacket draw = {0};
 
 void *listenInputs(void *arg) {
@@ -67,6 +67,12 @@ void *listenInputs(void *arg) {
 }
 
 int main(int argc, char **argv) {
+    int num_players = atoi(argv[1]);
+
+    for (int i = 0; i < num_players; i++) {
+        draw.model_id[i] = atoi(argv[i + 2]);
+    }
+
     socket_fd = createUDPSocket();
     sockaddr_in server_address = initializeServerAddr();
     bindAddressToSocket(server_address, socket_fd);
@@ -243,7 +249,7 @@ int main(int argc, char **argv) {
                                 paint_max_z, paint_face);
 
                 // paint
-                {
+                if (!player[id].swimming) {
                     PaintPoint pp = {};
                     pp.team = id % 2;
                     pp.pos = paint_max_z;
@@ -261,11 +267,6 @@ int main(int argc, char **argv) {
 
                     paintCircle(map.model, map.model.faces[pp.face],
                                 pp.pos, pp.radius, color, false);
-                }
-
-                // TODO: get this from lobby server
-                for (int i = 0; i < MAX_PLAYERS; i++) {
-                    draw.model_id[i] = TEST;
                 }
 
                 // rotation
