@@ -82,6 +82,10 @@ int main(int argc, char **argv) {
         player[i].dir = {0, 0, 0};
         player[i].rotation = {0, 0, 0, 1};
         player[i].health = STARTING_HEALTH;
+        player[i].max_ammo = STARTING_AMMO;
+        player[i].ammo = player[i].max_ammo;
+        player[i].atk_delay = ATK_DELAY;
+        player[i].starting_atk_delay = ATK_DELAY;
     }
 
     // Create map
@@ -151,7 +155,9 @@ int main(int argc, char **argv) {
                 if (input.right) {
                     player[id].dir.x += 1;
                 }
-                if (input.shooting) {
+                if (input.shooting && player[id].atk_delay <= 0) {
+                    player[id].atk_delay = player[id].starting_atk_delay;
+
                     float mouse_angle = input.mouse_angle * -1;
                     mouse_angle -= 90;
                     Vector looking(0, 0, 0);
@@ -199,6 +205,8 @@ int main(int argc, char **argv) {
             // player-related simulation
             for(int id = 0; id < MAX_PLAYERS; id++) {
                 if (!online[id]) continue;
+
+                player[id].atk_delay -= TICK_TIME;
 
                 // respawn
                 if (player[id].dead) {
@@ -270,6 +278,7 @@ int main(int argc, char **argv) {
 
             // projectile simulation
             {
+                printf("projectiles %d\n", num_projectiles);
                 for (int i = 0; i < num_projectiles; i++) {
 
                     // check collision with player

@@ -14,6 +14,9 @@
 #define MAX(a, b) ((a) > (b) ? a : b)
 #define MIN(a, b) ((a) < (b) ? a : b)
 
+#define STARTING_AMMO 100
+#define ATK_DELAY 30
+
 #define TEST_SCALE 0.2, 0.2, 0.2
 #define ROLO_SCALE 0.2, 0.2, 0.2
 #define SNIPER_SCALE 0.2, 0.2, 0.2
@@ -48,12 +51,12 @@
 
 #define STARTING_HEALTH 100
 
-#define LIGHT_START_X (-15)
-#define LIGHT_START_Y (-10)
-#define LIGHT_END_X (15)
-#define LIGHT_END_Y (10)
+#define LIGHT_START_X (-7)
+#define LIGHT_START_Y (-5)
+#define LIGHT_END_X (7)
+#define LIGHT_END_Y (5)
 
-#define LOGIN_SERVER_IP "177.220.84.202"
+#define LOGIN_SERVER_IP "127.0.0.1"
 #define LOGIN_SERVER_PORT ":3000"
 
 #define SERVER_ADDRESS LOGIN_SERVER_IP
