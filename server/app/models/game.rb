@@ -3,7 +3,7 @@ class Game < ApplicationRecord
   has_many :game_players, :dependent => :destroy
 
   scope :accepting_players, -> (players) {
-    where(room_size: players)
+    where(room_size: players, state: 'waiting')
         .joins("LEFT OUTER JOIN game_players on games.id = game_players.game_id")
         .group("games.id")
         .having("count(game_players.id) < ?", players)
@@ -27,6 +27,12 @@ class Game < ApplicationRecord
   end
 
 
+  def end_game
+    update(state: 'finished')
+    game_players.update_all(state: 'finished')
+  end
+
+
   def required_players
     if state == 'starting'
       result = room_size - game_players.where(state: 'starting').length
@@ -47,9 +53,13 @@ class Game < ApplicationRecord
     result
   end
 
+
   private
 
   def start_game_server
-    Thread.new { %x(make -C ../ game_server_run) }
+    Thread.new {
+      %x(make -C ../ game_server_run)
+      end_game
+    }
   end
 end
