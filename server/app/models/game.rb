@@ -1,6 +1,6 @@
 class Game < ApplicationRecord
   belongs_to :map
-  has_many :game_players
+  has_many :game_players, :dependent => :destroy
 
   scope :accepting_players, -> (players) {
     where(room_size: players)
@@ -34,6 +34,16 @@ class Game < ApplicationRecord
       result = room_size - game_players.length
     end
 
+    result
+  end
+
+
+  def next_player_id
+    if game_players.count > 0
+      result = game_players.maximum(:player_id) + 1
+    else
+      result = 0
+    end
     result
   end
 
