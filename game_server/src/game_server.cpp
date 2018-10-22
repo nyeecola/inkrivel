@@ -13,7 +13,7 @@
 #define MAX_INPUT_BUFFER_SIZE 200
 
 // milliseconds
-#define TICK_TIME 10
+#define TICK_TIME 11
 
 void bindAddressToSocket(sockaddr_in server_address, int socket_fd) {
     sockaddr *addr = (sockaddr *) &server_address;
@@ -155,8 +155,14 @@ int main(int argc, char **argv) {
                 if (input.right) {
                     player[id].dir.x += 1;
                 }
-                if (input.shooting && player[id].atk_delay <= 0) {
+                if (input.shooting && player[id].atk_delay <= 0 && player[id].ammo) {
                     player[id].atk_delay = player[id].starting_atk_delay;
+
+                    // update ammo
+                    player[id].ammo -= 1;
+                    if (player[id].ammo < 0) { // needed in the future
+                        player[id].ammo = 0;
+                    }
 
                     float mouse_angle = input.mouse_angle * -1;
                     mouse_angle -= 90;
@@ -206,7 +212,11 @@ int main(int argc, char **argv) {
             for(int id = 0; id < MAX_PLAYERS; id++) {
                 if (!online[id]) continue;
 
-                player[id].atk_delay -= TICK_TIME;
+                draw.ammo[id] = player[id].ammo;
+
+                if (player[id].atk_delay > 0) {
+                    player[id].atk_delay -= TICK_TIME;
+                }
 
                 // respawn
                 if (player[id].dead) {

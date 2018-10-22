@@ -14,8 +14,14 @@
 #define MAX(a, b) ((a) > (b) ? a : b)
 #define MIN(a, b) ((a) < (b) ? a : b)
 
+#define AMMO_BOX_X_OFFSET 0.3
+#define AMMO_BOX_Y_OFFSET 0.1
+#define AMMO_BOX_WIDTH 0.2
+#define AMMO_BOX_HEIGHT 0.4
+#define AMMO_BOX_BORDER 0.01
+
 #define STARTING_AMMO 100
-#define ATK_DELAY 30
+#define ATK_DELAY 35
 
 #define TEST_SCALE 0.2, 0.2, 0.2
 #define ROLO_SCALE 0.2, 0.2, 0.2

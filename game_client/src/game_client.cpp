@@ -268,13 +268,13 @@ int main(int argc, char **argv) {
         for (uint32_t i = 0; i < draw.num_projectiles; i++) {
             float r, g, b;
             if (draw.projectiles_team[i]) {
-                r = 1;
-                g = 0;
-                b = 1;
+                r = 1 * 0.6;
+                g = 0 * 0.6;
+                b = 1 * 0.6;
             } else {
-                r = 0;
-                g = 1;
-                b = 0;
+                r = 0 * 0.6;
+                g = 1 * 0.6;
+                b = 0 * 0.6;
             }
             if (draw.respawn_timer[my_id] >= 0) { // grayscale
                 float brightness = 0.2126*r + 0.7152*g + 0.0722*b;
@@ -332,6 +332,34 @@ int main(int argc, char **argv) {
                 drawSphere(draw.pos[i], draw.hit_radius[i], 1, 0, 0);
 #endif
             }
+        }
+
+        // draw ammo bar
+        if (draw.ammo[my_id] < STARTING_AMMO) {
+            assert(draw.ammo[my_id] >= 0);
+
+            float x = draw.pos[my_id].x;
+            float y = draw.pos[my_id].y;
+
+            float r, g, b;
+            if (my_id % 2) {
+                r = 1;
+                g = 0;
+                b = 1;
+            } else {
+                r = 0;
+                g = 1;
+                b = 0;
+            }
+            
+            float ratio = draw.ammo[my_id] / (float) STARTING_AMMO;
+
+            drawRect(x + AMMO_BOX_X_OFFSET, y + AMMO_BOX_Y_OFFSET,
+                     AMMO_BOX_WIDTH, AMMO_BOX_HEIGHT, 0, 0, 0);
+            drawRect(x + AMMO_BOX_X_OFFSET + AMMO_BOX_BORDER,
+                     y + AMMO_BOX_Y_OFFSET + AMMO_BOX_BORDER,
+                     AMMO_BOX_WIDTH - AMMO_BOX_BORDER * 2,
+                     (AMMO_BOX_HEIGHT - AMMO_BOX_BORDER * 2) * ratio, r, g, b);
         }
 
         glClear(GL_DEPTH_BUFFER_BIT);
