@@ -313,6 +313,18 @@ int main(int argc, char **argv) {
                     case TEST:
                         glScalef(TEST_SCALE);
                         break;
+                    case ROLO:
+                        glScalef(ROLO_SCALE);
+                        break;
+                    case SNIPER:
+                        glScalef(SNIPER_SCALE);
+                        break;
+                    case ASSAULT:
+                        glScalef(ASSAULT_SCALE);
+                        break;
+                    case BUCKET:
+                        glScalef(BUCKET_SCALE);
+                        break;
                     default:
                         assert(false);
                 }
