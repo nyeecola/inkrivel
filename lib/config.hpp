@@ -24,6 +24,8 @@
 #define AMMO_BOX_HEIGHT 0.4
 #define AMMO_BOX_BORDER 0.01
 
+#define AMMO_RECHARGE_RATE 0.25
+
 #define STARTING_AMMO 100
 #define ATK_DELAY 35
 
