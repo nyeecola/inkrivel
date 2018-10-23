@@ -65,6 +65,7 @@ class GamesController < ApplicationController
   def join
     room_size = params[:room_size]
     account = Account.find(params[:account_id])
+    account.game_account.update(character_id: params[:character_id])
     games_list = Game.accepting_players(room_size)
 
     if games_list.length > 0
