@@ -59,7 +59,7 @@ class Game < ApplicationRecord
   def start_game_server
     Thread.new {
       characters = game_players.order(player_id: :asc).map { |player| player.game_account.character_id }
-      %x(make -C ../ game_server_run #{room_size} #{ characters.join(' ') })
+      %x(./../game_server/bin/game_server #{room_size} #{ characters.join(' ') })
       end_game
     }
   end
