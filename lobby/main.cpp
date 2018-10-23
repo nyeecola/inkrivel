@@ -464,10 +464,10 @@ int main(int argc, char **argv) {
                     ImGui::Separator();
 
                     static int charPick = 0;
-                    ImGui::RadioButton("Assault", &charPick, 0);
-                    ImGui::RadioButton("Bucket", &charPick, 1);
-                    ImGui::RadioButton("Roll", &charPick, 2);
-                    ImGui::RadioButton("Sniper", &charPick, 3);
+                    ImGui::RadioButton("Rolo", &charPick, 0);
+                    ImGui::RadioButton("Sniper", &charPick, 1);
+                    ImGui::RadioButton("Assault", &charPick, 2);
+                    ImGui::RadioButton("Bucket", &charPick, 3);
                     ImGui::Separator();
 
                     if (!waiting_to_play) {
@@ -475,9 +475,10 @@ int main(int argc, char **argv) {
                             char data[100];
                             sprintf(data, "{"
                                     "\"account_id\": \"%d\","
-                                    "\"room_size\": \"%d\" "
+                                    "\"room_size\": \"%d\","
+                                    "\"character_id\": \"%d\" "
                                     "}",
-                                    login_id, radioPressed*2 + 4);
+                                    login_id, radioPressed*2 + 4, charPick);
 
                             struct curl_slist *hs=NULL;
                             hs = curl_slist_append(hs, "Content-Type: application/json");

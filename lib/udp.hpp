@@ -40,7 +40,7 @@ typedef struct {
     bool left;
     bool shooting;
     bool especial;
-    bool running;
+    bool swimming;
 } InputPacket;
 
 typedef struct {
@@ -68,6 +68,10 @@ typedef struct {
     PaintPoint paint_points[MAX_PAINT_POINTS];
 
     char timer[12]; // NULL terminated
+
+    uint8_t ammo[MAX_PLAYERS];
+
+    bool swimming[MAX_PLAYERS];
 } DrawPacket;
 
 class PacketBuffer {
