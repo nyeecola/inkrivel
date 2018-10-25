@@ -166,8 +166,8 @@ int main(int argc, char **argv) {
                     player[id].atk_delay = player[id].starting_atk_delay;
 
                     // update ammo
-                    player[id].ammo -= 1;
-                    if (player[id].ammo < 0) { // needed in the future
+                    player[id].ammo -= AMMO_DISCHARGE_RATE;
+                    if (player[id].ammo < 0) {
                         player[id].ammo = 0;
                     }
 
@@ -240,12 +240,26 @@ int main(int argc, char **argv) {
                 }
 
                 // collision
+                {
+                    for (int k = 0; k < MAX_PLAYERS; k++) {
+                        if (!online[k] || k == id) continue;
+
+                        Vector next_pos = player[id].pos + player[id].dir;
+
+                        if ((next_pos*next_pos - player[k].pos*player[k].pos).len() <
+                            player[id].hit_radius + player[k].hit_radius) {
+                            player[id].dir = player[id].pos - player[id].dir;
+                            player[id].dir.normalize();
+                        }
+                    }
+                }
+
                 Vector player_z = {0, 0, -200};
                 Vector normal_sum = {0, 0, 0};
                 Vector paint_max_z = {0, 0, -200};
                 int paint_face;
                 collidesWithMap(map, player[id], normal_sum, player_z,
-                                paint_max_z, paint_face);
+                        paint_max_z, paint_face);
 
                 // paint
                 if (!player[id].swimming) {
@@ -367,19 +381,19 @@ int main(int argc, char **argv) {
                         float offset_z = 0;
                         switch (draw.model_id[j]) {
                             case TEST:
-                                offset_z = TEST_HITBOX_Z_OFFSET; 
+                                offset_z = TEST_HITBOX_Z_OFFSET;
                                 break;
                             case ROLO:
-                                offset_z = ROLO_HITBOX_Z_OFFSET; 
+                                offset_z = ROLO_HITBOX_Z_OFFSET;
                                 break;
                             case ASSAULT:
-                                offset_z = ASSAULT_HITBOX_Z_OFFSET; 
+                                offset_z = ASSAULT_HITBOX_Z_OFFSET;
                                 break;
                             case SNIPER:
-                                offset_z = SNIPER_HITBOX_Z_OFFSET; 
+                                offset_z = SNIPER_HITBOX_Z_OFFSET;
                                 break;
                             case BUCKET:
-                                offset_z = BUCKET_HITBOX_Z_OFFSET; 
+                                offset_z = BUCKET_HITBOX_Z_OFFSET;
                                 break;
                             default:
                                 assert(false);
