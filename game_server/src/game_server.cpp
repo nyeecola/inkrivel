@@ -232,6 +232,7 @@ int main(int argc, char **argv) {
                     player[id].respawn_timer -= (float) TICK_TIME / 1000.0f;
                     if (player[id].respawn_timer < 0) {
                         player[id].dead = false;
+                        player[id].ammo = STARTING_AMMO;
                         draw.respawn_timer[id] = -1;
                     } else {
                         draw.respawn_timer[id] = (int) player[id].respawn_timer;

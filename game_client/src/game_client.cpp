@@ -355,7 +355,7 @@ int main(int argc, char **argv) {
         }
 
         // draw ammo bar
-        if (input.swimming) {
+        if (input.swimming && draw.respawn_timer[my_id] == -1) {
             assert(draw.ammo[my_id] >= 0);
 
             float x = draw.pos[my_id].x;
@@ -381,7 +381,6 @@ int main(int argc, char **argv) {
                      AMMO_BOX_WIDTH - AMMO_BOX_BORDER * 2,
                      (AMMO_BOX_HEIGHT - AMMO_BOX_BORDER * 2) * ratio, r, g, b);
         }
-
 
         // font
         {
