@@ -395,12 +395,6 @@ int main(int argc, char **argv) {
                         Vector dist_vector = player_hitbox_center - projectiles[i].pos;
                         if (dist_vector.len() < player[j].hit_radius +
                                                 projectiles[i].radius) {
-                            for (int k = i; k < num_projectiles - 1; k++) {
-                                projectiles[k] = projectiles[k + 1];
-                            }
-                            num_projectiles--;
-                            i--;
-
                             player[j].health -= projectiles[i].damage;
 
                             // respawn
@@ -410,6 +404,12 @@ int main(int argc, char **argv) {
                                 player[j].dead = true;
                                 player[j].respawn_timer = RESPAWN_DELAY;
                             }
+
+                            for (int k = i; k < num_projectiles - 1; k++) {
+                                projectiles[k] = projectiles[k + 1];
+                            }
+                            num_projectiles--;
+                            i--;
 
                             goto next;
                         }
