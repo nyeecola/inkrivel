@@ -25,6 +25,10 @@ public:
 
     bool dead;
     float respawn_timer;
+
+    // these variable are bad solutions to real problems
+    // TODO: clean this up
+    Vector normal_sum;
 };
 
 class Projectile {

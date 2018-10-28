@@ -164,6 +164,7 @@ int main(int argc, char **argv) {
                     player[id].dir.x += 1;
                 }
                 player[id].swimming = input.swimming;
+
                 if (input.shooting && !player[id].swimming && player[id].atk_delay <= 0 && player[id].ammo) {
                     player[id].atk_delay = player[id].starting_atk_delay;
 
@@ -179,6 +180,15 @@ int main(int argc, char **argv) {
                     looking.x = cos(mouse_angle * M_PI / 180);
                     looking.y = -sin(mouse_angle * M_PI / 180);
                     looking.normalize();
+
+                    {
+                        float dot = looking.dot(player[id].normal_sum);
+                        float squared_normal = player[id].normal_sum.lenSq();
+                        float tmp = dot/squared_normal;
+                        Vector scaled_normal = player[id].normal_sum * tmp;
+                        looking = looking - scaled_normal;
+                        looking.normalize();
+                    }
 
                     assert(num_projectiles < MAX_PROJECTILES);
                     projectiles[num_projectiles].pos = player[id].pos + Vector(0, 0, 0.25);
@@ -274,6 +284,9 @@ int main(int argc, char **argv) {
 
                 // rotation
                 {
+                    // TODO: do not store this value in the future, there is no need to
+                    player[id].normal_sum = normal_sum;
+
                     player[id].rotation = getRotationQuat({0,0,1}, normal_sum);
                     draw.rotations[id] = player[id].rotation;
                 }
