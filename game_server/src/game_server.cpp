@@ -221,6 +221,7 @@ int main(int argc, char **argv) {
             for(int id = 0; id < MAX_PLAYERS; id++) {
                 if (!online[id]) continue;
 
+                draw.swimming[id] = player[id].swimming;
                 draw.ammo[id] = (int) player[id].ammo;
 
                 if (player[id].atk_delay > 0) {

@@ -332,7 +332,7 @@ int main(int argc, char **argv) {
                         assert(false);
                 }
 
-                if (input.swimming && i == my_id) {
+                if (draw.swimming[i]) {
                     glTranslatef(0, 0, -0.4);
                 }
 
