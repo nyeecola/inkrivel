@@ -67,10 +67,10 @@ int main(int argc, char **argv) {
     models.pink_character[BUCKET]  = loadWavefrontModel("../assets/bucket/bucket.obj",   "../assets/bucket/bucket_r.png",   VERTEX_ALL, 1024);
     //models.pink_character[TEST]  = loadWavefrontModel("../assets/test/test.obj",       "../assets/test/test_r.png",       VERTEX_ALL, 1024);
 
-#if 1
+#if 0
     models.map = loadWavefrontModel("../assets/map/test_map.obj", "../assets/map/test_map.png", VERTEX_ALL, MAP_TEXTURE_SIZE);
 #else
-    models.map = loadWavefrontModel("../assets/cherie.obj", "../assets/map3.png", VERTEX_ALL, MAP_TEXTURE_SIZE);
+    models.map = loadWavefrontModel("../assets/map/final_map.obj", "../assets/map/final_map.png", VERTEX_ALL, MAP_TEXTURE_SIZE);
 #endif
 
     // TODO: MUST BE INITIALIZED PROPERLY
