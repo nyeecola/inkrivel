@@ -120,6 +120,7 @@ void createProjectile(InputPacket input, Character *player, int model_id, int id
                 }
                 player->alternate_fire_assault = !player->alternate_fire_assault;
             }
+            proj.velocity += (player->dir * player->speed * 1.1);
             break;
         case SNIPER:
             proj.damage = SNIPER_PROJECTILE_DAMAGE;
@@ -149,6 +150,7 @@ void createProjectile(InputPacket input, Character *player, int model_id, int id
 
                     float speed = (std::min(((float) (rand() % 101)) / 100.0 + 0.3, 1.0));
                     proj.velocity = result * speed;
+                    proj.velocity += (player->dir * player->speed);
                 }
 
                 assert(*num_proj < MAX_PROJECTILES);
@@ -268,10 +270,24 @@ int main(int argc, char **argv) {
 
                 if (input.shooting && !player[id].swimming && player[id].atk_delay <= 0 && player[id].ammo) {
                     // update ammo
-                    if (draw.model_id[id] == ROLO) {
-                        player[id].ammo -= 0.1;
-                    } else {
-                        player[id].ammo -= 1;
+                    switch (draw.model_id[id]) {
+                        case ROLO:
+                            player[id].ammo -= 0.1;
+                            break;
+                        case TEST:
+                            player[id].ammo -= 0.3;
+                            break;
+                        case SNIPER:
+                            player[id].ammo -= 10;
+                            break;
+                        case ASSAULT:
+                            player[id].ammo -= 0.3;
+                            break;
+                        case BUCKET:
+                            player[id].ammo -= 10;
+                            break;
+                        default:
+                            assert(false);
                     }
                     if (player[id].ammo < 0) { // needed in the future
                         player[id].ammo = 0;
@@ -284,7 +300,7 @@ int main(int argc, char **argv) {
                         pp.pos = player[id].paint_max_z;
                         pp.face = player[id].paint_face;
                         // TODO: fix this number and do this only for ROLO
-                        pp.radius = 40;
+                        pp.radius = ((sin(clock() / (CLOCKS_PER_SEC / 100)) + 1) / 2) * 12 + 24;
                         draw.paint_points[draw.num_paint_points++] = pp;
 
                         uint32_t color;
@@ -296,6 +312,20 @@ int main(int argc, char **argv) {
 
                         paintCircle(map.model, map.model.faces[pp.face],
                                     pp.pos, pp.radius, color, false);
+
+                        // damage other players nearby
+                        for (int i = 0; i < MAX_PLAYERS; i++) {
+                            if (!online[i] || i == id) continue;
+
+                            float dist = (player[i].pos - player[id].pos).len();
+                            if (player[i].hit_radius + player[id].hit_radius >= dist) {
+                                // kill the slime
+                                player[i].pos = Vector(0, 0, 20);
+                                player[i].health = STARTING_HEALTH;
+                                player[i].dead = true;
+                                player[i].respawn_timer = RESPAWN_DELAY;
+                            }
+                        }
                     } else { // everyone else can shoot normally
                         // create projectile
                         createProjectile(input, &player[id], draw.model_id[id], id, projectiles, &num_projectiles);
@@ -360,6 +390,7 @@ int main(int argc, char **argv) {
                         player[id].dir *= player[id].speed;
                     }
                     if (player[id].swimming) {
+
                         Vector max_z = {0, 0, -200};
                         int face_max_z = -1;
                         for (int i = 0; i < map.model.num_faces; i++) {

@@ -17,7 +17,7 @@
 #define MAX(a, b) ((a) > (b) ? a : b)
 #define MIN(a, b) ((a) < (b) ? a : b)
 
-#define SWIM_GOOD_FACTOR 2
+#define SWIM_GOOD_FACTOR 1.6
 #define SWIM_BAD_FACTOR 0.5
 
 #define AMMO_BOX_X_OFFSET 0.3
@@ -35,7 +35,7 @@
 #define ROLO_SCALE 0.1, 0.1, 0.1
 #define SNIPER_SCALE 0.1, 0.1, 0.1
 #define ASSAULT_SCALE 0.1, 0.1, 0.1
-#define BUCKET_SCALE 0.1, 0.1, 0.1
+#define BUCKET_SCALE 0.13, 0.13, 0.13
 
 #define MAP_SCALE 1.1
 
@@ -59,7 +59,7 @@
 
 #define TEST_PROJECTILE_DAMAGE 10
 #define ROLO_PROJECTILE_DAMAGE 10
-#define SNIPER_PROJECTILE_DAMAGE 10
+#define SNIPER_PROJECTILE_DAMAGE 70
 #define ASSAULT_PROJECTILE_DAMAGE 10
 #define BUCKET_PROJECTILE_DAMAGE 10
 

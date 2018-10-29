@@ -221,6 +221,7 @@ int main(int argc, char **argv) {
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
 
+
         // set camera position
         glTranslatef(-draw.pos[my_id].x, -draw.pos[my_id].y, -8);
 
@@ -289,7 +290,8 @@ int main(int argc, char **argv) {
             }
         }
 
-        //glClear(GL_DEPTH_BUFFER_BIT);
+        drawSphere(draw.pos[my_id], 0.17, 1, 0, 0);
+        glClear(GL_DEPTH_BUFFER_BIT);
 
         // draw players
         for (int i = 0; i < MAX_PLAYERS; i++) {
