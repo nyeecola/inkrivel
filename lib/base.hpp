@@ -39,9 +39,10 @@ public:
 class Projectile {
 public:
     Vector pos;
-    Vector dir;
+    Vector velocity;
     float radius;
-    float speed;
     uint8_t team;
     uint8_t damage;
+
+    int character_id;
 };

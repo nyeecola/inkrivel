@@ -91,24 +91,26 @@ void createProjectile(InputPacket input, Character *player, int model_id, int id
     // create projectile
     Projectile proj;
     proj.pos = player->pos + Vector(0, 0, 0.25); // TODO: stop de mijar
-    proj.dir = looking;
+    proj.velocity = looking * 0.03; // TODO: the constant is the speed, change it to a define
     proj.radius = 0.04;
-    proj.speed = 0.03;
     proj.team = id % 2;
     proj.damage = 0;
+    proj.character_id = model_id;
 
     // projectile damage
     switch (model_id){
         case TEST:
+            player->atk_delay = player->starting_atk_delay;
             proj.damage = TEST_PROJECTILE_DAMAGE;
             break;
         case ROLO:
             assert(false);
             break;
         case ASSAULT:
+            player->atk_delay = player->starting_atk_delay;
             proj.damage = ASSAULT_PROJECTILE_DAMAGE;
             {
-                Vector tmp(-proj.dir.y, proj.dir.x, proj.dir.z);
+                Vector tmp(-proj.velocity.y, proj.velocity.x, proj.velocity.z);
                 tmp.normalize();
 
                 if (player->alternate_fire_assault) {
@@ -121,18 +123,49 @@ void createProjectile(InputPacket input, Character *player, int model_id, int id
             break;
         case SNIPER:
             proj.damage = SNIPER_PROJECTILE_DAMAGE;
+            proj.velocity *= 4;
+            // TODO: change the constant for a define
+            player->atk_delay = player->starting_atk_delay * 22;
             break;
         case BUCKET:
+            // TODO: change the constant for a define
+            player->atk_delay = player->starting_atk_delay * 22;
             proj.damage = BUCKET_PROJECTILE_DAMAGE;
+
+            // TODO: change the constant for a define
+            for (int i = 0; i < 7; i++) {
+                {
+                    int offset = (rand() % 60) - 30;
+
+                    float angle = atan2(looking.y, looking.x);
+                    angle += ((float) offset) * M_PI / 180;
+
+                    Vector result;
+                    result.x = cos(angle);
+                    result.y = sin(angle);
+                    result.z = looking.z;
+                    result.normalize();
+                    result *= 0.03;
+
+                    float speed = (std::min(((float) (rand() % 101)) / 100.0 + 0.3, 1.0));
+                    proj.velocity = result * speed;
+                }
+
+                assert(*num_proj < MAX_PROJECTILES);
+                projectiles[*num_proj] = proj;
+                *num_proj = *num_proj + 1;
+            }
             break;
         default:
             assert(false);
     }
 
-    // add projectile to queue
-    assert(*num_proj < MAX_PROJECTILES);
-    projectiles[*num_proj] = proj;
-    *num_proj = *num_proj + 1;
+    // add projectile to queue (but not for bucket, since he has already shot)
+    if (model_id != BUCKET) {
+        assert(*num_proj < MAX_PROJECTILES);
+        projectiles[*num_proj] = proj;
+        *num_proj = *num_proj + 1;
+    }
 }
 
 int main(int argc, char **argv) {
@@ -264,18 +297,6 @@ int main(int argc, char **argv) {
                         paintCircle(map.model, map.model.faces[pp.face],
                                     pp.pos, pp.radius, color, false);
                     } else { // everyone else can shoot normally
-                        switch (draw.model_id[id]) {
-                            case ASSAULT: {
-                            } break;
-                            case SNIPER: {
-                            } break;
-                            case BUCKET: {
-                            } break;
-                            default:
-                                assert(false);
-                        }
-                        player[id].atk_delay = player[id].starting_atk_delay;
-
                         // create projectile
                         createProjectile(input, &player[id], draw.model_id[id], id, projectiles, &num_projectiles);
                     }
@@ -416,8 +437,48 @@ int main(int argc, char **argv) {
 
             // projectile simulation
             {
-                printf("projectiles %d\n", num_projectiles);
+                //printf("projectiles %d\n", num_projectiles);
                 for (int i = 0; i < num_projectiles; i++) {
+
+                    if (projectiles[i].character_id == SNIPER) {
+                        Vector max_intersection(0, 0, -200);
+                        int paint_face = -1;
+                        for (int j = 0; j < map.model.num_faces; j++) {
+                            Face *cur = &map.model.faces[j];
+                            Vector intersection;
+                            bool intersect = rayIntersectsTriangle(map,
+                                                                   projectiles[i].pos,
+                                                                   Vector(0, 0, -1), cur,
+                                                                   intersection);
+                            if (intersect) {
+                                if (max_intersection.z < intersection.z) {
+                                    max_intersection = intersection;
+                                    paint_face = j;
+                                }
+                            }
+                        }
+
+                        if (paint_face >= 0) {
+                            // paint
+                            PaintPoint pp = {};
+                            pp.team = projectiles[i].team;
+                            pp.pos = max_intersection;
+                            pp.face = paint_face;
+                            // TODO: fix this number only for SNIPER
+                            pp.radius = 15;
+                            draw.paint_points[draw.num_paint_points++] = pp;
+
+                            uint32_t color;
+                            if (projectiles[i].team) {
+                                color = 0xFFFF1FFF;
+                            } else {
+                                color = 0xFF1FFF1F;
+                            }
+
+                            paintCircle(map.model, map.model.faces[pp.face],
+                                        pp.pos, pp.radius, color, false);
+                        }
+                    }
 
                     // check collision with player
                     for (int j = 0; j < MAX_PLAYERS; j++) {
@@ -507,8 +568,8 @@ int main(int argc, char **argv) {
 
                             goto next;
                         } else {
-                            projectiles[i].dir += Vector(0, 0, -GRAVITY);
-                            projectiles[i].pos += projectiles[i].dir * projectiles[i].speed;
+                            projectiles[i].velocity += Vector(0, 0, -GRAVITY);
+                            projectiles[i].pos += projectiles[i].velocity;
                         }
                     }
 
@@ -538,7 +599,7 @@ next:;
             draw.frame = tick_count++;
 
             uint64_t tick_end = getTimestamp();
-            printf("Tick time: %lums\n", tick_end - tick_start);
+            //printf("Tick time: %lums\n", tick_end - tick_start);
 
             for(int i = 0; i < MAX_PLAYERS; i++) {
                 if (online[i]) {

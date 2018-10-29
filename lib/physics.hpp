@@ -150,14 +150,14 @@ bool projectileCollidesWithMap(Map map, Projectile projectile, Vector& paint_pos
             normal = normal * -1;
         }
 
-        Vector dir = projectile.dir + Vector(0, 0, -GRAVITY);
+        Vector dir = projectile.velocity + Vector(0, 0, -GRAVITY);
         Vector intersection;
         bool intersect = rayIntersectsTriangle(map, projectile.pos, dir,
                                                cur, intersection);
         if (intersect) {
             Vector tmp_v = intersection - projectile.pos;
             float mag = tmp_v.len();
-            if (mag < dir.len() * projectile.speed) {
+            if (mag < dir.len()) {
                 intersects = true;
 
                 if (mag < min_intersection_mag) {
