@@ -96,13 +96,12 @@ int main(int argc, char **argv) {
 
     // Create map
     Map map;
-#if 0
-    map.model = loadWavefrontModel("../assets/map7.obj", "../assets/map3.png",
-                                   VERTEX_ALL, MAP_TEXTURE_SIZE);
+#if 1
+    map.model = loadWavefrontModel("../assets/map/test_map.obj", "../assets/map/test_map.png", VERTEX_ALL, MAP_TEXTURE_SIZE);
 #else
-    map.model = loadWavefrontModel("../assets/cherie.obj", "../assets/map3.png",
-                                   VERTEX_ALL, MAP_TEXTURE_SIZE);
+    map.model = loadWavefrontModel("../assets/cherie.obj", "../assets/map3.png", VERTEX_ALL, MAP_TEXTURE_SIZE);
 #endif
+
     for(int i = 0; i < MAX_PLAYERS; i++){
         map.characterList[i] = &player[i];
     }

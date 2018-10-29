@@ -55,21 +55,22 @@ int main(int argc, char **argv) {
 
     // Load models
     Models models = {0};
-    models.green_character[0] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_green.png", VERTEX_ALL, 1024);
-    models.green_character[1] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_green.png", VERTEX_ALL, 1024);
-    models.green_character[2] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_green.png", VERTEX_ALL, 1024);
-    models.green_character[3] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_green.png", VERTEX_ALL, 1024);
-    models.pink_character[0] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_pink.png", VERTEX_ALL, 1024);
-    models.pink_character[1] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_pink.png", VERTEX_ALL, 1024);
-    models.pink_character[2] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_pink.png", VERTEX_ALL, 1024);
-    models.pink_character[3] = loadWavefrontModel("../assets/slime.obj", "../assets/slime_pink.png", VERTEX_ALL, 1024);
+    models.green_character[ROLO]    = loadWavefrontModel("../assets/rolo/rolo.obj",       "../assets/rolo/rolo_v.png",       VERTEX_ALL, 1024);
+    models.green_character[SNIPER]  = loadWavefrontModel("../assets/sniper/sniper.obj",   "../assets/sniper/sniper_v.png",   VERTEX_ALL, 1024);
+    models.green_character[ASSAULT] = loadWavefrontModel("../assets/assault/assault.obj", "../assets/assault/assault_v.png", VERTEX_ALL, 1024);
+    models.green_character[BUCKET]  = loadWavefrontModel("../assets/bucket/bucket.obj",   "../assets/bucket/bucket_v.png",   VERTEX_ALL, 1024);
+    //models.green_character[TEST]  = loadWavefrontModel("../assets/test/test.obj",       "../assets/test/test_v.png",       VERTEX_ALL);
 
-#if 0
-    models.map = loadWavefrontModel("../assets/map7.obj", "../assets/map3.png",
-                                    VERTEX_ALL, MAP_TEXTURE_SIZE);
+    models.pink_character[ROLO]    = loadWavefrontModel("../assets/rolo/rolo.obj",       "../assets/rolo/rolo_r.png",       VERTEX_ALL, 1024);
+    models.pink_character[SNIPER]  = loadWavefrontModel("../assets/sniper/sniper.obj",   "../assets/sniper/sniper_r.png",   VERTEX_ALL, 1024);
+    models.pink_character[ASSAULT] = loadWavefrontModel("../assets/assault/assault.obj", "../assets/assault/assault_r.png", VERTEX_ALL, 1024);
+    models.pink_character[BUCKET]  = loadWavefrontModel("../assets/bucket/bucket.obj",   "../assets/bucket/bucket_r.png",   VERTEX_ALL, 1024);
+    //models.pink_character[TEST]  = loadWavefrontModel("../assets/test/test.obj",       "../assets/test/test_r.png",       VERTEX_ALL, 1024);
+
+#if 1
+    models.map = loadWavefrontModel("../assets/map/test_map.obj", "../assets/map/test_map.png", VERTEX_ALL, MAP_TEXTURE_SIZE);
 #else
-    models.map = loadWavefrontModel("../assets/cherie.obj", "../assets/map3.png",
-                                    VERTEX_ALL, MAP_TEXTURE_SIZE);
+    models.map = loadWavefrontModel("../assets/cherie.obj", "../assets/map3.png", VERTEX_ALL, MAP_TEXTURE_SIZE);
 #endif
 
     // TODO: MUST BE INITIALIZED PROPERLY
