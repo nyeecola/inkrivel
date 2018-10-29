@@ -3,9 +3,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define IMGUI_IMPL_OPENGL_LOADER_GL3W
-#include "GL/gl3w.h"
+#define IMGUI_IMPL_OPENGL_LOADER_GLEW
+#include "GL/glew.h"
 #include <GLFW/glfw3.h>
+
+#include <GL/gl.h>
+#include <GL/glcorearb.h>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
@@ -244,7 +247,7 @@ int main(int argc, char **argv) {
         glfwMakeContextCurrent(window);
         glfwSwapInterval(1); // Enable vsync
 
-        bool Err = gl3wInit() != 0;
+        bool Err = glewInit() != 0;
         if (Err) {
             fprintf(stderr, "Failed to initialize OpenGL loader! %d\n", Err);
             return 1;
@@ -545,10 +548,24 @@ int main(int argc, char **argv) {
             glfwMakeContextCurrent(window);
             glfwGetFramebufferSize(window, &display_w, &display_h);
             glViewport(0, 0, display_w, display_h);
-            glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+
+            glClearColor(1, 0, 0, 1);
             glClear(GL_COLOR_BUFFER_BIT);
+            glDisable(GL_DEPTH_TEST);
+            glBegin(GL_QUADS);
+            glColor3f(1, 0, 0);
+            glVertex3f(-1, 1, 0);
+            glColor3f(0, 1, 0);
+            glVertex3f(-1, -1, 0);
+            glColor3f(0, 0, 1);
+            glVertex3f(1, -1, 0);
+            glColor3f(0, 0, 0);
+            glVertex3f(1, 1, 0);
+            glEnd();
+
             ImGui::Render();
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
             glfwMakeContextCurrent(window);
             glfwSwapBuffers(window);
         }

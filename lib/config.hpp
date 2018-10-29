@@ -37,7 +37,7 @@
 #define ASSAULT_SCALE 0.1, 0.1, 0.1
 #define BUCKET_SCALE 0.13, 0.13, 0.13
 
-#define MAP_SCALE 1.1
+#define MAP_SCALE 1
 
 #define MAX_OBJ_VERTICES 100000
 #define MAX_OBJ_FACES 100000
