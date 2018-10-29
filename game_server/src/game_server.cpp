@@ -551,6 +551,46 @@ int main(int argc, char **argv) {
                                 player[j].respawn_timer = RESPAWN_DELAY;
                             }
 
+                            // also, paint the ground
+                            {
+                                Vector max_intersection(0, 0, -200);
+                                int paint_face = -1;
+                                for (int j = 0; j < map.model.num_faces; j++) {
+                                    Face *cur = &map.model.faces[j];
+                                    Vector intersection;
+                                    bool intersect = rayIntersectsTriangle(map,
+                                            projectiles[i].pos,
+                                            Vector(0, 0, -1), cur,
+                                            intersection);
+                                    if (intersect) {
+                                        if (max_intersection.z < intersection.z) {
+                                            max_intersection = intersection;
+                                            paint_face = j;
+                                        }
+                                    }
+                                }
+
+                                if (paint_face >= 0) {
+                                    // paint
+                                    PaintPoint pp = {};
+                                    pp.team = projectiles[i].team;
+                                    pp.pos = max_intersection;
+                                    pp.face = paint_face;
+                                    pp.radius = 30; // TODO: fix this number
+                                    draw.paint_points[draw.num_paint_points++] = pp;
+
+                                    uint32_t color;
+                                    if (projectiles[i].team) {
+                                        color = 0xFFFF1FFF;
+                                    } else {
+                                        color = 0xFF1FFF1F;
+                                    }
+
+                                    paintCircle(map.model, map.model.faces[pp.face],
+                                            pp.pos, pp.radius, color, false);
+                                }
+                            }
+
                             for (int k = i; k < num_projectiles - 1; k++) {
                                 projectiles[k] = projectiles[k + 1];
                             }

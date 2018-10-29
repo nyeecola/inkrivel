@@ -290,8 +290,7 @@ int main(int argc, char **argv) {
             }
         }
 
-        drawSphere(draw.pos[my_id], 0.17, 1, 0, 0);
-        glClear(GL_DEPTH_BUFFER_BIT);
+        //glClear(GL_DEPTH_BUFFER_BIT);
 
         // draw players
         for (int i = 0; i < MAX_PLAYERS; i++) {
