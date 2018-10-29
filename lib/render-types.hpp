@@ -77,7 +77,7 @@ void getPaintResults(Model map, float percentages[3]) {
 
 class Models {
     public:
-        Model green_character[AVAILABLE_CHARACTERS];
-        Model pink_character[AVAILABLE_CHARACTERS];
+        Model green_character[AVAILABLE_CHARACTERS+1];
+        Model pink_character[AVAILABLE_CHARACTERS+1];
         Model map;
 };
