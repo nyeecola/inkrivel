@@ -66,6 +66,75 @@ void *listenInputs(void *arg) {
     return NULL;
 }
 
+void createProjectile(InputPacket input, Character *player, int model_id, int id, Projectile *projectiles, int *num_proj) {
+    assert(projectiles);
+    assert(num_proj);
+
+    // projectile XY direction
+    float mouse_angle = input.mouse_angle * -1;
+    mouse_angle -= 90;
+    Vector looking(0, 0, 0);
+    looking.x = cos(mouse_angle * M_PI / 180);
+    looking.y = -sin(mouse_angle * M_PI / 180);
+    looking.normalize();
+
+    // projectile XYZ direction
+    {
+        float dot = looking.dot(player->normal_sum);
+        float squared_normal = player->normal_sum.lenSq();
+        float tmp = dot/squared_normal;
+        Vector scaled_normal = player->normal_sum * tmp;
+        looking = looking - scaled_normal;
+        looking.normalize();
+    }
+
+    // create projectile
+    Projectile proj;
+    proj.pos = player->pos + Vector(0, 0, 0.25); // TODO: stop de mijar
+    proj.dir = looking;
+    proj.radius = 0.04;
+    proj.speed = 0.03;
+    proj.team = id % 2;
+    proj.damage = 0;
+
+    // projectile damage
+    switch (model_id){
+        case TEST:
+            proj.damage = TEST_PROJECTILE_DAMAGE;
+            break;
+        case ROLO:
+            assert(false);
+            break;
+        case ASSAULT:
+            proj.damage = ASSAULT_PROJECTILE_DAMAGE;
+            {
+                Vector tmp(-proj.dir.y, proj.dir.x, proj.dir.z);
+                tmp.normalize();
+
+                if (player->alternate_fire_assault) {
+                    proj.pos = proj.pos + tmp * 0.07; // TODO: check if this value is good
+                } else {
+                    proj.pos = proj.pos - tmp * 0.07; // TODO: check if this value is good
+                }
+                player->alternate_fire_assault = !player->alternate_fire_assault;
+            }
+            break;
+        case SNIPER:
+            proj.damage = SNIPER_PROJECTILE_DAMAGE;
+            break;
+        case BUCKET:
+            proj.damage = BUCKET_PROJECTILE_DAMAGE;
+            break;
+        default:
+            assert(false);
+    }
+
+    // add projectile to queue
+    assert(*num_proj < MAX_PROJECTILES);
+    projectiles[*num_proj] = proj;
+    *num_proj = *num_proj + 1;
+}
+
 int main(int argc, char **argv) {
     int num_players = atoi(argv[1]);
 
@@ -165,63 +234,53 @@ int main(int argc, char **argv) {
                 player[id].swimming = input.swimming;
 
                 if (input.shooting && !player[id].swimming && player[id].atk_delay <= 0 && player[id].ammo) {
-                    player[id].atk_delay = player[id].starting_atk_delay;
-
                     // update ammo
-                    player[id].ammo -= 1;
+                    if (draw.model_id[id] == ROLO) {
+                        player[id].ammo -= 0.1;
+                    } else {
+                        player[id].ammo -= 1;
+                    }
                     if (player[id].ammo < 0) { // needed in the future
                         player[id].ammo = 0;
                     }
 
-                    float mouse_angle = input.mouse_angle * -1;
-                    mouse_angle -= 90;
-                    Vector looking(0, 0, 0);
-                    looking.x = cos(mouse_angle * M_PI / 180);
-                    looking.y = -sin(mouse_angle * M_PI / 180);
-                    looking.normalize();
+                    if (draw.model_id[id] == ROLO) {
+                        // paint
+                        PaintPoint pp = {};
+                        pp.team = id % 2;
+                        pp.pos = player[id].paint_max_z;
+                        pp.face = player[id].paint_face;
+                        // TODO: fix this number and do this only for ROLO
+                        pp.radius = 40;
+                        draw.paint_points[draw.num_paint_points++] = pp;
 
-                    {
-                        float dot = looking.dot(player[id].normal_sum);
-                        float squared_normal = player[id].normal_sum.lenSq();
-                        float tmp = dot/squared_normal;
-                        Vector scaled_normal = player[id].normal_sum * tmp;
-                        looking = looking - scaled_normal;
-                        looking.normalize();
+                        uint32_t color;
+                        if (id % 2) {
+                            color = 0xFFFF1FFF;
+                        } else {
+                            color = 0xFF1FFF1F;
+                        }
+
+                        paintCircle(map.model, map.model.faces[pp.face],
+                                    pp.pos, pp.radius, color, false);
+                    } else { // everyone else can shoot normally
+                        switch (draw.model_id[id]) {
+                            case ASSAULT: {
+                            } break;
+                            case SNIPER: {
+                            } break;
+                            case BUCKET: {
+                            } break;
+                            default:
+                                assert(false);
+                        }
+                        player[id].atk_delay = player[id].starting_atk_delay;
+
+                        // create projectile
+                        createProjectile(input, &player[id], draw.model_id[id], id, projectiles, &num_projectiles);
                     }
-
-                    assert(num_projectiles < MAX_PROJECTILES);
-                    projectiles[num_projectiles].pos = player[id].pos + Vector(0, 0, 0.25);
-                    // always shooting straight, z can be changed if that's not what you want
-                    projectiles[num_projectiles].dir = looking;
-                    projectiles[num_projectiles].radius = 0.04;
-                    projectiles[num_projectiles].speed = 0.03;
-                    projectiles[num_projectiles].team = id % 2;
-
-                    uint8_t damage = 0;
-                    switch (draw.model_id[id]){
-                        case TEST:
-                            damage = TEST_PROJECTILE_DAMAGE;
-                            break;
-                        case ROLO:
-                            damage = ROLO_PROJECTILE_DAMAGE;
-                            break;
-                        case ASSAULT:
-                            damage = ASSAULT_PROJECTILE_DAMAGE;
-                            break;
-                        case SNIPER:
-                            damage = SNIPER_PROJECTILE_DAMAGE;
-                            break;
-                        case BUCKET:
-                            damage = BUCKET_PROJECTILE_DAMAGE;
-                            break;
-                        default:
-                            assert(false);
-                    }
-
-                    projectiles[num_projectiles].damage = damage;
-
-                    num_projectiles++;
                 }
+
                 player[id].dir.normalize();
                 player[id].dir *= player[id].speed;
             }
@@ -260,26 +319,9 @@ int main(int argc, char **argv) {
                 collidesWithMap(map, player[id], normal_sum, player_z,
                                 paint_max_z, paint_face);
 
-                // paint
-                if (!player[id].swimming) {
-                    PaintPoint pp = {};
-                    pp.team = id % 2;
-                    pp.pos = paint_max_z;
-                    pp.face = paint_face;
-                    // TODO: fix this number and do this only for ROLO
-                    pp.radius = 40;
-                    draw.paint_points[draw.num_paint_points++] = pp;
-
-                    uint32_t color;
-                    if (id % 2) {
-                        color = 0xFFFF1FFF;
-                    } else {
-                        color = 0xFF1FFF1F;
-                    }
-
-                    paintCircle(map.model, map.model.faces[pp.face],
-                                pp.pos, pp.radius, color, false);
-                }
+                // TODO: do not store this value in the future, there is no need to
+                player[id].paint_max_z = paint_max_z;
+                player[id].paint_face = paint_face;
 
                 // rotation
                 {

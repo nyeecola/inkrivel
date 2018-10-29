@@ -29,6 +29,11 @@ public:
     // these variable are bad solutions to real problems
     // TODO: clean this up
     Vector normal_sum;
+    Vector paint_max_z;
+    int paint_face;
+
+    // these variable is only for assault
+    bool alternate_fire_assault;
 };
 
 class Projectile {

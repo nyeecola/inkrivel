@@ -8,7 +8,7 @@
 #define ever ;;
 #define MAX_PLAYERS 8
 
-#define MAP_TEXTURE_SIZE 2048
+#define MAP_TEXTURE_SIZE 1024
 
 // TODO: maybe do something about this
 #define MAX_PROJECTILES 200
@@ -32,12 +32,12 @@
 #define ATK_DELAY 35
 
 #define TEST_SCALE 0.2, 0.2, 0.2
-#define ROLO_SCALE 0.2, 0.2, 0.2
-#define SNIPER_SCALE 0.2, 0.2, 0.2
-#define ASSAULT_SCALE 0.2, 0.2, 0.2
-#define BUCKET_SCALE 0.2, 0.2, 0.2
+#define ROLO_SCALE 0.1, 0.1, 0.1
+#define SNIPER_SCALE 0.1, 0.1, 0.1
+#define ASSAULT_SCALE 0.1, 0.1, 0.1
+#define BUCKET_SCALE 0.1, 0.1, 0.1
 
-#define MAP_SCALE 1.4
+#define MAP_SCALE 0.4
 
 #define MAX_OBJ_VERTICES 100000
 #define MAX_OBJ_FACES 100000
