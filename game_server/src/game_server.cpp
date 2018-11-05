@@ -402,15 +402,13 @@ int main(int argc, char **argv) {
                         player[id].dir *= player[id].speed;
                     }
                     if (player[id].swimming) {
-
                         Vector max_z = {0, 0, -200};
                         int face_max_z = -1;
                         for (int i = 0; i < map.model.num_faces; i++) {
                             Face *cur = &map.model.faces[i];
 
                             Vector ground = {0, 0, -1};
-                            Vector sky = {player[id].pos.x + player[id].hit_radius,
-                                          player[id].pos.y, 200};
+                            Vector sky = {player[id].pos.x, player[id].pos.y, 200};
                             Vector intersection;
                             bool intersect = rayIntersectsTriangle(map, sky, ground,
                                                                    cur, intersection);
@@ -427,6 +425,7 @@ int main(int argc, char **argv) {
                             int fv0 = paint_face.vertices[0];
                             int fv1 = paint_face.vertices[1];
                             int fv2 = paint_face.vertices[2];
+
                             Vector v0 = MAP_SCALE * map.model.vertices[fv0];
                             Vector v1 = MAP_SCALE * map.model.vertices[fv1];
                             Vector v2 = MAP_SCALE * map.model.vertices[fv2];
@@ -441,14 +440,14 @@ int main(int argc, char **argv) {
                             TextureCoord tex_v1 = map.model.texture_coords[ftc1];
                             TextureCoord tex_v2 = map.model.texture_coords[ftc2];
 
-                            int tex_x, tex_y;
+                            float tex_x, tex_y;
                             tex_x = (u * tex_v0.x + v * tex_v1.x + w * tex_v2.x) * (MAP_TEXTURE_SIZE-1);
                             tex_y = (u * tex_v0.y + v * tex_v1.y + w * tex_v2.y) * (MAP_TEXTURE_SIZE-1);
 
                             uint32_t *pixels = (uint32_t *) map.model.texture_image->pixels;
 
                             if (id % 2) {
-                                if (pixels[tex_y * MAP_TEXTURE_SIZE + tex_x] == 0xFFFF1FFF) {
+                                if (pixels[(int) tex_y * MAP_TEXTURE_SIZE + (int) tex_x] == 0xFFFF1FFF) {
                                     // player ammo
                                     if (player[id].ammo < STARTING_AMMO) {
                                         player[id].ammo += AMMO_RECHARGE_RATE;
@@ -458,7 +457,7 @@ int main(int argc, char **argv) {
                                     player[id].dir *= SWIM_BAD_FACTOR;
                                 }
                             } else {
-                                if (pixels[tex_y * MAP_TEXTURE_SIZE + tex_x] == 0xFF1FFF1F) {
+                                if (pixels[(int) tex_y * MAP_TEXTURE_SIZE + (int) tex_x] == 0xFF1FFF1F) {
                                     // player ammo
                                     if (player[id].ammo < STARTING_AMMO) {
                                         player[id].ammo += AMMO_RECHARGE_RATE;
@@ -679,7 +678,7 @@ next:;
             draw.frame = tick_count++;
 
             uint64_t tick_end = getTimestamp();
-            //printf("Tick time: %lums\n", tick_end - tick_start);
+            printf("Tick time: %lums\n", tick_end - tick_start);
 
             for(int i = 0; i < MAX_PLAYERS; i++) {
                 if (online[i]) {

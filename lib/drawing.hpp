@@ -262,9 +262,13 @@ void drawRect(float x, float y, float w, float h, float r, float g, float b) {
 void paintCircle(Model map_model, Face paint_face, Vector center, float radius, uint32_t color, bool opengl) {
     assert(radius <= 100);
 
-    Vector v0 = MAP_SCALE * map_model.vertices[paint_face.vertices[0]];
-    Vector v1 = MAP_SCALE * map_model.vertices[paint_face.vertices[1]];
-    Vector v2 = MAP_SCALE * map_model.vertices[paint_face.vertices[2]];
+    int fv0 = paint_face.vertices[0];
+    int fv1 = paint_face.vertices[1];
+    int fv2 = paint_face.vertices[2];
+
+    Vector v0 = MAP_SCALE * map_model.vertices[fv0];
+    Vector v1 = MAP_SCALE * map_model.vertices[fv1];
+    Vector v2 = MAP_SCALE * map_model.vertices[fv2];
 
     float u, v, w;
     barycentric(center, v0, v1, v2, u, v, w);
