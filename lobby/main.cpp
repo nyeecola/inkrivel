@@ -429,7 +429,7 @@ int main(int argc, char **argv) {
         else {
             {
                 if (socket_fd == -1) {
-                    socket_fd = createSocket();
+                    socket_fd = createSocket(server_address);
                     chatConnect(socket_fd, username);
 
                     pthread_t listener;

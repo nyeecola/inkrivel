@@ -54,7 +54,7 @@ void chatSendWhisper(int socket_fd, const char *destination, const char *message
     free(p.body);
 }
 
-int createSocket() {
+int createSocket(char *server_address_str) {
     // create TCP blocking socket
     long socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd < 0) {
@@ -63,7 +63,7 @@ int createSocket() {
     }
 
     // load host by address
-    struct hostent *server = gethostbyname(SERVER_ADDRESS);
+    struct hostent *server = gethostbyname(server_address_str);
     if (!server) {
         fprintf(stderr, "ERROR: Failed to resolve server address.\n");
         return -1;

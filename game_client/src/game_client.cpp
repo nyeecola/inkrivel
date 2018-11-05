@@ -19,10 +19,10 @@ int main(int argc, char **argv) {
     int my_id;
     sscanf(argv[1], "%d", &my_id);
 
-    char *server_address = argv[2];
+    char *server_address_str = argv[2];
 
     int socket_file_descriptor = createUDPSocket();
-    hostent *raw_server_address = DNSLookUp(server_address);
+    hostent *raw_server_address = DNSLookUp(server_address_str);
     sockaddr_in server_address = InitializeClientAddr(raw_server_address);
     sockaddr *server_adapted_address = (sockaddr *) &server_address;
 
