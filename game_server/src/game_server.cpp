@@ -36,6 +36,17 @@ bool online[MAX_PLAYERS] = {0};
 
 DrawPacket draw = {0};
 
+void killPlayer(Character *players, int id) {
+    if (id % 2) {
+        players[id].pos = Vector(PINK_RESPAWN_LOC);
+    } else {
+        players[id].pos = Vector(GREEN_RESPAWN_LOC);
+    }
+    players[id].health = STARTING_HEALTH;
+    players[id].dead = true;
+    players[id].respawn_timer = RESPAWN_DELAY;
+}
+
 void *listenInputs(void *arg) {
     while (!should_die) {
         socklen_t len = sizeof(addr);
@@ -134,7 +145,7 @@ void createProjectile(InputPacket input, Character *player, int model_id, int id
             proj.damage = BUCKET_PROJECTILE_DAMAGE;
 
             // TODO: change the constant for a define
-            for (int i = 0; i < 7; i++) {
+            for (int i = 0; i < NUM_BUCKET_SHOTS; i++) {
                 {
                     int offset = (rand() % 60) - 30;
 
@@ -186,7 +197,11 @@ int main(int argc, char **argv) {
     // Create players
     Character player[MAX_PLAYERS];
     for(int i = 0; i < MAX_PLAYERS; i++){
-        player[i].pos = {0, 0, 0.35};
+        if (i % 2) {
+            player[i].pos = Vector(PINK_RESPAWN_LOC);
+        } else {
+            player[i].pos = Vector(GREEN_RESPAWN_LOC);
+        }
         player[i].hit_radius = 0.25;
         player[i].speed = 0.02;
         player[i].dir = {0, 0, 0};
@@ -320,10 +335,7 @@ int main(int argc, char **argv) {
                             float dist = (player[i].pos - player[id].pos).len();
                             if (player[i].hit_radius + player[id].hit_radius >= dist) {
                                 // kill the slime
-                                player[i].pos = Vector(0, 0, 20);
-                                player[i].health = STARTING_HEALTH;
-                                player[i].dead = true;
-                                player[i].respawn_timer = RESPAWN_DELAY;
+                                killPlayer(player, i);
                             }
                         }
                     } else { // everyone else can shoot normally
@@ -545,10 +557,7 @@ int main(int argc, char **argv) {
 
                             // respawn
                             if (player[j].health <= 0) {
-                                player[j].pos = Vector(0, 0, 20);
-                                player[j].health = STARTING_HEALTH;
-                                player[j].dead = true;
-                                player[j].respawn_timer = RESPAWN_DELAY;
+                                killPlayer(player, j);
                             }
 
                             // also, paint the ground

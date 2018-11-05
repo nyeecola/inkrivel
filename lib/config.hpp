@@ -8,6 +8,8 @@
 #define ever ;;
 #define MAX_PLAYERS 8
 
+#define NUM_BUCKET_SHOTS 12
+
 #define MAP_TEXTURE_SIZE 4096
 
 // TODO: maybe do something about this
@@ -38,6 +40,9 @@
 #define BUCKET_SCALE 0.13, 0.13, 0.13
 
 #define MAP_SCALE 1
+
+#define GREEN_RESPAWN_LOC -5, -7, 20
+#define PINK_RESPAWN_LOC 4.2, 7, 20
 
 #define MAX_OBJ_VERTICES 100000
 #define MAX_OBJ_FACES 100000
