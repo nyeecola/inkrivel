@@ -131,7 +131,7 @@ void createProjectile(InputPacket input, Character *player, int model_id, int id
                 }
                 player->alternate_fire_assault = !player->alternate_fire_assault;
             }
-            proj.velocity += (player->dir * player->speed);
+            proj.velocity += (player->dir * player->speed * 0.6);
             break;
         case SNIPER:
             proj.damage = SNIPER_PROJECTILE_DAMAGE;
@@ -161,7 +161,7 @@ void createProjectile(InputPacket input, Character *player, int model_id, int id
 
                     float speed = (std::min(((float) (rand() % 101)) / 100.0 + 0.3, 1.0));
                     proj.velocity = result * speed;
-                    proj.velocity += (player->dir * player->speed);
+                    proj.velocity += (player->dir * player->speed * 0.6);
                 }
 
                 assert(*num_proj < MAX_PROJECTILES);

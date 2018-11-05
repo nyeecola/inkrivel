@@ -347,25 +347,36 @@ int main(int argc, char **argv) {
                 switch (draw.model_id[i]) {
                     case TEST:
                         glScalef(TEST_SCALE);
+                        if (draw.swimming[i]) {
+                            glTranslatef(0, 0, -0.4);
+                        }
                         break;
                     case ROLO:
                         glScalef(ROLO_SCALE);
+                        if (draw.swimming[i]) {
+                            glTranslatef(0, 0, -1);
+                        }
                         break;
                     case SNIPER:
                         glScalef(SNIPER_SCALE);
+                        if (draw.swimming[i]) {
+                            glTranslatef(0, 0, -0.72);
+                        }
                         break;
                     case ASSAULT:
                         glScalef(ASSAULT_SCALE);
+                        if (draw.swimming[i]) {
+                            glTranslatef(0, 0, -0.44);
+                        }
                         break;
                     case BUCKET:
                         glScalef(BUCKET_SCALE);
+                        if (draw.swimming[i]) {
+                            glTranslatef(0, 0, -1);
+                        }
                         break;
                     default:
                         assert(false);
-                }
-
-                if (draw.swimming[i]) {
-                    glTranslatef(0, 0, -0.4);
                 }
 
                 if (i % 2) {
