@@ -38,13 +38,12 @@ ActiveRecord::Schema.define(version: 2018_09_25_002253) do
 
   create_table "game_accounts", force: :cascade do |t|
     t.integer "account_id"
-    t.integer "character_id"
+    t.integer "character_id", default: 0
     t.integer "matches_played", default: 0
     t.integer "winning_matches", default: 0
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_game_accounts_on_account_id"
-    t.index ["character_id"], name: "index_game_accounts_on_character_id"
   end
 
   create_table "game_players", force: :cascade do |t|

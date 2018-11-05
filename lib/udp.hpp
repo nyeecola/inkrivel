@@ -241,9 +241,8 @@ sockaddr_in InitializeClientAddr(hostent *server_raw_address) {
 }
 
 
-hostent* DNSLookUp() {
-
-    hostent *server = gethostbyname(SERVER_ADDRESS);
+hostent* DNSLookUp(char *server_address) {
+    hostent *server = gethostbyname(server_address);
     if ( server == NULL ) {
         fprintf(stderr, "ERROR: Failed to resolve server address.%s.\n", strerror(errno));
         exit(1);
