@@ -125,13 +125,13 @@ void createProjectile(InputPacket input, Character *player, int model_id, int id
                 tmp.normalize();
 
                 if (player->alternate_fire_assault) {
-                    proj.pos = proj.pos + tmp * 0.07; // TODO: check if this value is good
+                    proj.pos = proj.pos + tmp * 0.05; // TODO: check if this value is good
                 } else {
-                    proj.pos = proj.pos - tmp * 0.07; // TODO: check if this value is good
+                    proj.pos = proj.pos - tmp * 0.05; // TODO: check if this value is good
                 }
                 player->alternate_fire_assault = !player->alternate_fire_assault;
             }
-            proj.velocity += (player->dir * player->speed * 1.1);
+            proj.velocity += (player->dir * player->speed);
             break;
         case SNIPER:
             proj.damage = SNIPER_PROJECTILE_DAMAGE;
@@ -188,6 +188,9 @@ int main(int argc, char **argv) {
         draw.model_id[i] = (CharacterId) atoi(argv[i + 2]);
     }
 
+    draw.green_score = 0;
+    draw.pink_score = 0;
+
     socket_fd = createUDPSocket();
     sockaddr_in server_address = initializeServerAddr();
     bindAddressToSocket(server_address, socket_fd);
@@ -239,7 +242,7 @@ int main(int argc, char **argv) {
 
     int game_timer = TIMER_DURATION_IN_SECONDS * 1000;
 
-    for(ever) {
+    while (!should_die) {
         uint64_t cur_time = getTimestamp();
         uint64_t dt = cur_time - last_time; // TODO: maybe in seconds later in the future
         last_time = cur_time;
@@ -652,6 +655,16 @@ int main(int argc, char **argv) {
                         }
                     }
 
+                    // remove rogue projectiles
+                    if (projectiles[i].pos.z < -5) {
+                        for (int j = i; j < num_projectiles - 1; j++) {
+                            projectiles[j] = projectiles[j + 1];
+                        }
+                        num_projectiles--;
+                        i--;
+                        goto next;
+                    }
+
                     draw.projectiles_pos[i] = projectiles[i].pos;
                     draw.projectiles_radius[i] = projectiles[i].radius;
                     draw.projectiles_team[i] = projectiles[i].team;
@@ -669,8 +682,10 @@ next:;
                     float scores[3];
                     getPaintResults(map.model, scores);
                     printf("Green: %f\nPink: %f\nNone: %f\n", scores[0], scores[1], scores[2]);
+                    draw.green_score = scores[0];
+                    draw.pink_score = scores[1];
+                    draw.done = true;
                     should_die = true;
-                    break;
                 }
             }
 

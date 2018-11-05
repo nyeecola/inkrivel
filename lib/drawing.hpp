@@ -379,6 +379,29 @@ void stbtt_print(float x, float y, char *text, float r=1.0f, float g=1.0f, float
    glEnd();
 }
 
+void prepareDrawScore() {
+    //glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    //glDisable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    //glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    //glOrtho(0, SCREEN_WIDTH, 0, SCREEN_HEIGHT, -1, 1.0); // origin in bottom left
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+}
+
+void endDrawScore() {
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+}
+
 void prepareDrawFont() {
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_LIGHTING);

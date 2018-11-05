@@ -75,6 +75,34 @@ int main(int argc, char **argv) {
     models.map = loadWavefrontModel("../assets/map/final_map.obj", "../assets/map/final_map.png", VERTEX_ALL, MAP_TEXTURE_SIZE);
 #endif
 
+    // score textures
+    GLuint green_won_id;
+    {
+        SDL_Surface *sur = IMG_Load("../assets/green_win.png");
+        assert(sur);
+
+        glGenTextures(1, &green_won_id);
+        glBindTexture(GL_TEXTURE_2D, green_won_id);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexImage2D(GL_TEXTURE_2D, 0, 4, 1280, 720, 0,
+                     GL_RGBA, GL_UNSIGNED_BYTE, sur->pixels);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+    GLuint pink_won_id;
+    {
+        SDL_Surface *sur = IMG_Load("../assets/pink_win.png");
+        assert(sur);
+
+        glGenTextures(1, &pink_won_id);
+        glBindTexture(GL_TEXTURE_2D, pink_won_id);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexImage2D(GL_TEXTURE_2D, 0, 4, 1280, 720, 0,
+                     GL_RGBA, GL_UNSIGNED_BYTE, sur->pixels);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
     // TODO: MUST BE INITIALIZED PROPERLY
     InputPacket input = {0};
     input.player_id = my_id;
@@ -225,7 +253,7 @@ int main(int argc, char **argv) {
 
 
         // set camera position
-        glTranslatef(-draw.pos[my_id].x, -draw.pos[my_id].y, -8);
+        glTranslatef(-draw.pos[my_id].x, -draw.pos[my_id].y, -9);
 
         // draw sun
         {
@@ -386,6 +414,40 @@ int main(int argc, char **argv) {
                      (AMMO_BOX_HEIGHT - AMMO_BOX_BORDER * 2) * ratio, r, g, b);
         }
 
+        // score screen
+        if (draw.done) {
+            prepareDrawScore();
+
+            if (draw.pink_score > draw.green_score) {
+                glBindTexture(GL_TEXTURE_2D, pink_won_id);
+            } else {
+                glBindTexture(GL_TEXTURE_2D, green_won_id);
+            }
+            glBegin(GL_QUADS);
+            glColor3f(1, 1, 1);
+            glTexCoord2f(0, 0);
+            glVertex3f(-1, 1, 0);
+            glTexCoord2f(0, 1);
+            glVertex3f(-1, -1, 0);
+            glTexCoord2f(1, 1);
+            glVertex3f(1, -1, 0);
+            glTexCoord2f(1, 0);
+            glVertex3f(1, 1, 0);
+            glEnd();
+
+            endDrawScore();
+
+            prepareDrawFont();
+
+            char buffer[10] = {0};
+            sprintf(buffer, "%02.2f%%", draw.green_score);
+            stbtt_print(810, 350, buffer);
+            sprintf(buffer, "%02.2f%%", draw.pink_score);
+            stbtt_print(810, 490, buffer);
+
+            endDrawFont();
+        }
+
         // font
         {
             prepareDrawFont();
@@ -406,3 +468,4 @@ int main(int argc, char **argv) {
 
     return 0;
 }
+

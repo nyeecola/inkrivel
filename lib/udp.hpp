@@ -72,6 +72,11 @@ typedef struct {
     uint8_t ammo[MAX_PLAYERS];
 
     bool swimming[MAX_PLAYERS];
+
+    // this should be another packet
+    float green_score;
+    float pink_score;
+    bool done;
 } DrawPacket;
 
 class PacketBuffer {
