@@ -3,9 +3,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define IMGUI_IMPL_OPENGL_LOADER_GL3W
-#include "GL/gl3w.h"
+#define IMGUI_IMPL_OPENGL_LOADER_GLEW
+#include "GL/glew.h"
 #include <GLFW/glfw3.h>
+
+#include <GL/gl.h>
+#include <GL/glcorearb.h>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
@@ -24,6 +27,7 @@
 
 #define MAX_MSG_LEN (100 + 20)
 
+char server_address[50] = {0};
 Mix_Music *music;
 
 static void GlfwErrorCallback(int error, const char* description) {
@@ -148,7 +152,7 @@ size_t state_response(void *ptr, size_t size, size_t nmemb, void *stream){
         Mix_CloseAudio();
         char player_id_str[3];
         sprintf(player_id_str, "%d", player_id);
-        char * const args[] = {"game_client", player_id_str, NULL};
+        char * const args[] = {"game_client", player_id_str, server_address, NULL};
         assert(execvp("../game_client/bin/game_client", args) >= 0);
     }
 
@@ -244,7 +248,7 @@ int main(int argc, char **argv) {
         glfwMakeContextCurrent(window);
         glfwSwapInterval(1); // Enable vsync
 
-        bool Err = gl3wInit() != 0;
+        bool Err = glewInit() != 0;
         if (Err) {
             fprintf(stderr, "Failed to initialize OpenGL loader! %d\n", Err);
             return 1;
@@ -283,6 +287,8 @@ int main(int argc, char **argv) {
     char password[50] = {0};
     char buffer[MAX_MSG_LEN] = {0};
 
+    char server_address_with_port[50] = {0};
+
     char new_username[20] = {0};
     char new_password[50] = {0};
     char new_email[50] = {0};
@@ -291,6 +297,8 @@ int main(int argc, char **argv) {
     int login_id = -1;
 
     bool waiting_to_play = false;
+
+    bool connected = false;
 
     bool new_account = false;
     int selectedName = -1;
@@ -321,7 +329,20 @@ int main(int argc, char **argv) {
             ImGui::NewFrame();
         }
 
-        if (!logged) {
+        if (!connected) {
+            ImGui::SetNextWindowSize(ImVec2(0, 0));
+            ImGui::Begin("Login");
+            {
+                bool ret = ImGui::InputText("Server IP", server_address, sizeof(server_address), ImGuiInputTextFlags_EnterReturnsTrue);
+                bool ret2 = ImGui::Button("Connect", ImVec2(ImGui::GetWindowContentRegionWidth(), 0));
+                if ((ret || ret2) && strlen(server_address)) {
+                    strcat(server_address_with_port, server_address);
+                    strcat(server_address_with_port, LOGIN_SERVER_PORT);
+                    connected = true;
+                }
+            }
+            ImGui::End();
+        } else if (!logged) {
             ImGui::SetNextWindowSize(ImVec2(0, 0));
             ImGui::Begin("Login");
             {
@@ -330,14 +351,19 @@ int main(int argc, char **argv) {
                 ImGui::Separator();
                 bool button_return = ImGui::Button("Login", ImVec2(ImGui::GetWindowContentRegionWidth(), 0));
                 if (text_return || button_return) {
-                    if (strlen(username) && strlen(password)) {
+                    if (strlen(username) && strlen(password) && strlen(server_address)) {
                         char data[100];
                         sprintf(data, "{ \"user\": \"%s\", \"password\": \"%s\" }", username, password);
 
                         struct curl_slist *hs=NULL;
                         hs = curl_slist_append(hs, "Content-Type: application/json");
                         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hs);
-                        curl_easy_setopt(curl, CURLOPT_URL, LOGIN_SERVER_IP LOGIN_SERVER_PORT "/accounts/connect");
+                        {
+                            char tempbuf[50] = {0};
+                            strcat(tempbuf, server_address_with_port);
+                            strcat(tempbuf, "/accounts/connect");
+                            curl_easy_setopt(curl, CURLOPT_URL, tempbuf);
+                        }
                         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
                         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, response);
                         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &login_id);
@@ -376,7 +402,12 @@ int main(int argc, char **argv) {
                             struct curl_slist *hs=NULL;
                             hs = curl_slist_append(hs, "Content-Type: application/json");
                             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hs);
-                            curl_easy_setopt(curl, CURLOPT_URL, LOGIN_SERVER_IP LOGIN_SERVER_PORT "/accounts.json");
+                            {
+                                char tempbuf[50] = {0};
+                                strcat(tempbuf, server_address_with_port);
+                                strcat(tempbuf, "/accounts.json");
+                                curl_easy_setopt(curl, CURLOPT_URL, tempbuf);
+                            }
                             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
 
                             CURLcode res = curl_easy_perform(curl);
@@ -398,7 +429,7 @@ int main(int argc, char **argv) {
         else {
             {
                 if (socket_fd == -1) {
-                    socket_fd = createSocket();
+                    socket_fd = createSocket(server_address);
                     chatConnect(socket_fd, username);
 
                     pthread_t listener;
@@ -483,7 +514,12 @@ int main(int argc, char **argv) {
                             struct curl_slist *hs=NULL;
                             hs = curl_slist_append(hs, "Content-Type: application/json");
                             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hs);
-                            curl_easy_setopt(curl, CURLOPT_URL, LOGIN_SERVER_IP LOGIN_SERVER_PORT "/games/join");
+                            {
+                                char tempbuf[50] = {0};
+                                strcat(tempbuf, server_address_with_port);
+                                strcat(tempbuf, "/games/join");
+                                curl_easy_setopt(curl, CURLOPT_URL, tempbuf);
+                            }
                             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
 
                             CURLcode res = curl_easy_perform(curl);
@@ -523,9 +559,15 @@ int main(int argc, char **argv) {
             int monte_carlo = rand() % 100;
             if (waiting_to_play && monte_carlo <= 4) {
                 curl = curl_easy_init();
-                char url[100];
-                sprintf(url, LOGIN_SERVER_IP LOGIN_SERVER_PORT "/games/state.json?account_id=%d", login_id);
-                curl_easy_setopt(curl, CURLOPT_URL, url);
+                {
+                    char tempbuf[100] = {0};
+                    strcat(tempbuf, server_address_with_port);
+                    strcat(tempbuf, "/games/state.json?account_id=");
+                    char login_id_str[5] = {0};
+                    sprintf(login_id_str, "%d", login_id);
+                    strcat(tempbuf, login_id_str);
+                    curl_easy_setopt(curl, CURLOPT_URL, tempbuf);
+                }
                 curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, state_response);
                 curl_easy_setopt(curl, CURLOPT_WRITEDATA, &waiting_to_play);
 
@@ -545,10 +587,24 @@ int main(int argc, char **argv) {
             glfwMakeContextCurrent(window);
             glfwGetFramebufferSize(window, &display_w, &display_h);
             glViewport(0, 0, display_w, display_h);
-            glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+
+            glClearColor(1, 0, 0, 1);
             glClear(GL_COLOR_BUFFER_BIT);
+            glDisable(GL_DEPTH_TEST);
+            glBegin(GL_QUADS);
+            glColor3f(1, 0, 0);
+            glVertex3f(-1, 1, 0);
+            glColor3f(0, 1, 0);
+            glVertex3f(-1, -1, 0);
+            glColor3f(0, 0, 1);
+            glVertex3f(1, -1, 0);
+            glColor3f(0, 0, 0);
+            glVertex3f(1, 1, 0);
+            glEnd();
+
             ImGui::Render();
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
             glfwMakeContextCurrent(window);
             glfwSwapBuffers(window);
         }

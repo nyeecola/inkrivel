@@ -36,6 +36,17 @@ bool online[MAX_PLAYERS] = {0};
 
 DrawPacket draw = {0};
 
+void killPlayer(Character *players, int id) {
+    if (id % 2) {
+        players[id].pos = Vector(PINK_RESPAWN_LOC);
+    } else {
+        players[id].pos = Vector(GREEN_RESPAWN_LOC);
+    }
+    players[id].health = STARTING_HEALTH;
+    players[id].dead = true;
+    players[id].respawn_timer = RESPAWN_DELAY;
+}
+
 void *listenInputs(void *arg) {
     while (!should_die) {
         socklen_t len = sizeof(addr);
@@ -66,12 +77,119 @@ void *listenInputs(void *arg) {
     return NULL;
 }
 
+void createProjectile(InputPacket input, Character *player, int model_id, int id, Projectile *projectiles, int *num_proj) {
+    assert(projectiles);
+    assert(num_proj);
+
+    // projectile XY direction
+    float mouse_angle = input.mouse_angle * -1;
+    mouse_angle -= 90;
+    Vector looking(0, 0, 0);
+    looking.x = cos(mouse_angle * M_PI / 180);
+    looking.y = -sin(mouse_angle * M_PI / 180);
+    looking.normalize();
+
+    // projectile XYZ direction
+    {
+        float dot = looking.dot(player->normal_sum);
+        float squared_normal = player->normal_sum.lenSq();
+        float tmp = dot/squared_normal;
+        Vector scaled_normal = player->normal_sum * tmp;
+        looking = looking - scaled_normal;
+        looking.normalize();
+    }
+
+    // create projectile
+    Projectile proj;
+    proj.pos = player->pos + Vector(0, 0, 0.25); // TODO: stop de mijar
+    proj.velocity = looking * 0.03; // TODO: the constant is the speed, change it to a define
+    proj.radius = 0.04;
+    proj.team = id % 2;
+    proj.damage = 0;
+    proj.character_id = model_id;
+
+    // projectile damage
+    switch (model_id){
+        case TEST:
+            player->atk_delay = player->starting_atk_delay;
+            proj.damage = TEST_PROJECTILE_DAMAGE;
+            break;
+        case ROLO:
+            assert(false);
+            break;
+        case ASSAULT:
+            player->atk_delay = player->starting_atk_delay;
+            proj.damage = ASSAULT_PROJECTILE_DAMAGE;
+            {
+                Vector tmp(-proj.velocity.y, proj.velocity.x, proj.velocity.z);
+                tmp.normalize();
+
+                if (player->alternate_fire_assault) {
+                    proj.pos = proj.pos + tmp * 0.05; // TODO: check if this value is good
+                } else {
+                    proj.pos = proj.pos - tmp * 0.05; // TODO: check if this value is good
+                }
+                player->alternate_fire_assault = !player->alternate_fire_assault;
+            }
+            proj.velocity += (player->dir * player->speed * 0.6);
+            break;
+        case SNIPER:
+            proj.damage = SNIPER_PROJECTILE_DAMAGE;
+            proj.velocity *= 4;
+            // TODO: change the constant for a define
+            player->atk_delay = player->starting_atk_delay * 22;
+            break;
+        case BUCKET:
+            // TODO: change the constant for a define
+            player->atk_delay = player->starting_atk_delay * 22;
+            proj.damage = BUCKET_PROJECTILE_DAMAGE;
+
+            // TODO: change the constant for a define
+            for (int i = 0; i < NUM_BUCKET_SHOTS; i++) {
+                {
+                    int offset = (rand() % 60) - 30;
+
+                    float angle = atan2(looking.y, looking.x);
+                    angle += ((float) offset) * M_PI / 180;
+
+                    Vector result;
+                    result.x = cos(angle);
+                    result.y = sin(angle);
+                    result.z = looking.z;
+                    result.normalize();
+                    result *= 0.03;
+
+                    float speed = (std::min(((float) (rand() % 101)) / 100.0 + 0.3, 1.0));
+                    proj.velocity = result * speed;
+                    proj.velocity += (player->dir * player->speed * 0.6);
+                }
+
+                assert(*num_proj < MAX_PROJECTILES);
+                projectiles[*num_proj] = proj;
+                *num_proj = *num_proj + 1;
+            }
+            break;
+        default:
+            assert(false);
+    }
+
+    // add projectile to queue (but not for bucket, since he has already shot)
+    if (model_id != BUCKET) {
+        assert(*num_proj < MAX_PROJECTILES);
+        projectiles[*num_proj] = proj;
+        *num_proj = *num_proj + 1;
+    }
+}
+
 int main(int argc, char **argv) {
     int num_players = atoi(argv[1]);
 
     for (int i = 0; i < num_players; i++) {
         draw.model_id[i] = (CharacterId) atoi(argv[i + 2]);
     }
+
+    draw.green_score = 0;
+    draw.pink_score = 0;
 
     socket_fd = createUDPSocket();
     sockaddr_in server_address = initializeServerAddr();
@@ -82,7 +200,11 @@ int main(int argc, char **argv) {
     // Create players
     Character player[MAX_PLAYERS];
     for(int i = 0; i < MAX_PLAYERS; i++){
-        player[i].pos = {0, 0, 0.35};
+        if (i % 2) {
+            player[i].pos = Vector(PINK_RESPAWN_LOC);
+        } else {
+            player[i].pos = Vector(GREEN_RESPAWN_LOC);
+        }
         player[i].hit_radius = 0.25;
         player[i].speed = 0.02;
         player[i].dir = {0, 0, 0};
@@ -94,19 +216,18 @@ int main(int argc, char **argv) {
         player[i].swimming = false;
     }
 
-    puts("puts-1");
     // Create map
     Map map;
-#if 1
-    map.model = loadWavefrontModel("../assets/map/test_map.obj", "../assets/map/test_map.png", VERTEX_ALL);
+#if 0
+    map.model = loadWavefrontModel("../assets/map/test_map.obj", "../assets/map/test_map.png", VERTEX_ALL, MAP_TEXTURE_SIZE);
 #else
-    map.model = loadWavefrontModel("../assets/cherie.obj", "../assets/map2.png", VERTEX_ALL);
+    map.model = loadWavefrontModel("../assets/map/final_map.obj", "../assets/map/final_map.png", VERTEX_ALL, MAP_TEXTURE_SIZE);
 #endif
-    puts("puts");
+
     for(int i = 0; i < MAX_PLAYERS; i++){
         map.characterList[i] = &player[i];
     }
-    puts("puts2");
+
     int num_projectiles = 0;
     Projectile projectiles[MAX_PROJECTILES] = {};
 
@@ -121,7 +242,7 @@ int main(int argc, char **argv) {
 
     int game_timer = TIMER_DURATION_IN_SECONDS * 1000;
 
-    for(ever) {
+    while (!should_die) {
         uint64_t cur_time = getTimestamp();
         uint64_t dt = cur_time - last_time; // TODO: maybe in seconds later in the future
         last_time = cur_time;
@@ -164,55 +285,68 @@ int main(int argc, char **argv) {
                     player[id].dir.x += 1;
                 }
                 player[id].swimming = input.swimming;
+
                 if (input.shooting && !player[id].swimming && player[id].atk_delay <= 0 && player[id].ammo) {
-                    player[id].atk_delay = player[id].starting_atk_delay;
-
                     // update ammo
-                    player[id].ammo -= 1;
-                    if (player[id].ammo < 0) { // needed in the future
-                        player[id].ammo = 0;
-                    }
-
-                    float mouse_angle = input.mouse_angle * -1;
-                    mouse_angle -= 90;
-                    Vector looking(0, 0, 0);
-                    looking.x = cos(mouse_angle * M_PI / 180);
-                    looking.y = -sin(mouse_angle * M_PI / 180);
-                    looking.normalize();
-
-                    assert(num_projectiles < MAX_PROJECTILES);
-                    projectiles[num_projectiles].pos = player[id].pos + Vector(0, 0, 0.25);
-                    // always shooting straight, z can be changed if that's not what you want
-                    projectiles[num_projectiles].dir = looking;
-                    projectiles[num_projectiles].radius = 0.04;
-                    projectiles[num_projectiles].speed = 0.03;
-                    projectiles[num_projectiles].team = id % 2;
-
-                    uint8_t damage = 0;
-                    switch (draw.model_id[id]){
-                        case TEST:
-                            damage = TEST_PROJECTILE_DAMAGE;
-                            break;
+                    switch (draw.model_id[id]) {
                         case ROLO:
-                            damage = ROLO_PROJECTILE_DAMAGE;
+                            player[id].ammo -= 0.1;
                             break;
-                        case ASSAULT:
-                            damage = ASSAULT_PROJECTILE_DAMAGE;
+                        case TEST:
+                            player[id].ammo -= 0.3;
                             break;
                         case SNIPER:
-                            damage = SNIPER_PROJECTILE_DAMAGE;
+                            player[id].ammo -= 10;
+                            break;
+                        case ASSAULT:
+                            player[id].ammo -= 0.3;
                             break;
                         case BUCKET:
-                            damage = BUCKET_PROJECTILE_DAMAGE;
+                            player[id].ammo -= 10;
                             break;
                         default:
                             assert(false);
                     }
+                    if (player[id].ammo < 0) { // needed in the future
+                        player[id].ammo = 0;
+                    }
 
-                    projectiles[num_projectiles].damage = damage;
+                    if (draw.model_id[id] == ROLO) {
+                        // paint
+                        PaintPoint pp = {};
+                        pp.team = id % 2;
+                        pp.pos = player[id].paint_max_z;
+                        pp.face = player[id].paint_face;
+                        // TODO: fix this number and do this only for ROLO
+                        pp.radius = ((sin(clock() / (CLOCKS_PER_SEC / 100)) + 1) / 2) * 12 + 24;
+                        draw.paint_points[draw.num_paint_points++] = pp;
 
-                    num_projectiles++;
+                        uint32_t color;
+                        if (id % 2) {
+                            color = 0xFFFF1FFF;
+                        } else {
+                            color = 0xFF1FFF1F;
+                        }
+
+                        paintCircle(map.model, map.model.faces[pp.face],
+                                    pp.pos, pp.radius, color, false);
+
+                        // damage other players nearby
+                        for (int i = 0; i < MAX_PLAYERS; i++) {
+                            if (!online[i] || i == id) continue;
+
+                            float dist = (player[i].pos - player[id].pos).len();
+                            if (player[i].hit_radius + player[id].hit_radius >= dist) {
+                                // kill the slime
+                                killPlayer(player, i);
+                            }
+                        }
+                    } else { // everyone else can shoot normally
+                        // create projectile
+                        createProjectile(input, &player[id], draw.model_id[id], id, projectiles, &num_projectiles);
+                    }
                 }
+
                 player[id].dir.normalize();
                 player[id].dir *= player[id].speed;
             }
@@ -221,6 +355,7 @@ int main(int argc, char **argv) {
             for(int id = 0; id < MAX_PLAYERS; id++) {
                 if (!online[id]) continue;
 
+                draw.swimming[id] = player[id].swimming;
                 draw.ammo[id] = (int) player[id].ammo;
 
                 if (player[id].atk_delay > 0) {
@@ -232,6 +367,7 @@ int main(int argc, char **argv) {
                     player[id].respawn_timer -= (float) TICK_TIME / 1000.0f;
                     if (player[id].respawn_timer < 0) {
                         player[id].dead = false;
+                        player[id].ammo = STARTING_AMMO;
                         draw.respawn_timer[id] = -1;
                     } else {
                         draw.respawn_timer[id] = (int) player[id].respawn_timer;
@@ -249,38 +385,17 @@ int main(int argc, char **argv) {
                 collidesWithMap(map, player[id], normal_sum, player_z,
                                 paint_max_z, paint_face);
 
-                // paint
-                if (!player[id].swimming) {
-                    PaintPoint pp = {};
-                    pp.team = id % 2;
-                    pp.pos = paint_max_z;
-                    pp.face = paint_face;
-                    // TODO: fix this number and do this only for ROLO
-                    pp.radius = 40;
-                    draw.paint_points[draw.num_paint_points++] = pp;
-
-                    uint32_t color;
-                    if (id % 2) {
-                        color = 0xFFFF1FFF;
-                    } else {
-                        color = 0xFF1FFF1F;
-                    }
-
-                    paintCircle(map.model, map.model.faces[pp.face],
-                                pp.pos, pp.radius, color, false);
-                }
+                // TODO: do not store this value in the future, there is no need to
+                player[id].paint_max_z = paint_max_z;
+                player[id].paint_face = paint_face;
 
                 // rotation
                 {
+                    // TODO: do not store this value in the future, there is no need to
+                    player[id].normal_sum = normal_sum;
+
                     player[id].rotation = getRotationQuat({0,0,1}, normal_sum);
                     draw.rotations[id] = player[id].rotation;
-                }
-
-                // player ammo
-                if (player[id].swimming) {
-                    if (player[id].ammo < STARTING_AMMO) {
-                        player[id].ammo += AMMO_RECHARGE_RATE;
-                    }
                 }
 
                 // player movement
@@ -296,8 +411,7 @@ int main(int argc, char **argv) {
                             Face *cur = &map.model.faces[i];
 
                             Vector ground = {0, 0, -1};
-                            Vector sky = {player[id].pos.x + player[id].hit_radius,
-                                          player[id].pos.y, 200};
+                            Vector sky = {player[id].pos.x, player[id].pos.y, 200};
                             Vector intersection;
                             bool intersect = rayIntersectsTriangle(map, sky, ground,
                                                                    cur, intersection);
@@ -314,6 +428,7 @@ int main(int argc, char **argv) {
                             int fv0 = paint_face.vertices[0];
                             int fv1 = paint_face.vertices[1];
                             int fv2 = paint_face.vertices[2];
+
                             Vector v0 = MAP_SCALE * map.model.vertices[fv0];
                             Vector v1 = MAP_SCALE * map.model.vertices[fv1];
                             Vector v2 = MAP_SCALE * map.model.vertices[fv2];
@@ -328,20 +443,28 @@ int main(int argc, char **argv) {
                             TextureCoord tex_v1 = map.model.texture_coords[ftc1];
                             TextureCoord tex_v2 = map.model.texture_coords[ftc2];
 
-                            int tex_x, tex_y;
-                            tex_x = (u * tex_v0.x + v * tex_v1.x + w * tex_v2.x) * 1023;
-                            tex_y = (u * tex_v0.y + v * tex_v1.y + w * tex_v2.y) * 1023;
+                            float tex_x, tex_y;
+                            tex_x = (u * tex_v0.x + v * tex_v1.x + w * tex_v2.x) * (MAP_TEXTURE_SIZE-1);
+                            tex_y = (u * tex_v0.y + v * tex_v1.y + w * tex_v2.y) * (MAP_TEXTURE_SIZE-1);
 
                             uint32_t *pixels = (uint32_t *) map.model.texture_image->pixels;
 
                             if (id % 2) {
-                                if (pixels[tex_y * 1024 + tex_x] == 0xFFFF1FFF) {
+                                if (pixels[(int) tex_y * MAP_TEXTURE_SIZE + (int) tex_x] == 0xFFFF1FFF) {
+                                    // player ammo
+                                    if (player[id].ammo < STARTING_AMMO) {
+                                        player[id].ammo += AMMO_RECHARGE_RATE;
+                                    }
                                     player[id].dir *= SWIM_GOOD_FACTOR;
                                 } else {
                                     player[id].dir *= SWIM_BAD_FACTOR;
                                 }
                             } else {
-                                if (pixels[tex_y * 1024 + tex_x] == 0xFF1FFF1F) {
+                                if (pixels[(int) tex_y * MAP_TEXTURE_SIZE + (int) tex_x] == 0xFF1FFF1F) {
+                                    // player ammo
+                                    if (player[id].ammo < STARTING_AMMO) {
+                                        player[id].ammo += AMMO_RECHARGE_RATE;
+                                    }
                                     player[id].dir *= SWIM_GOOD_FACTOR;
                                 } else {
                                     player[id].dir *= SWIM_BAD_FACTOR;
@@ -359,8 +482,48 @@ int main(int argc, char **argv) {
 
             // projectile simulation
             {
-                printf("projectiles %d\n", num_projectiles);
+                //printf("projectiles %d\n", num_projectiles);
                 for (int i = 0; i < num_projectiles; i++) {
+
+                    if (projectiles[i].character_id == SNIPER) {
+                        Vector max_intersection(0, 0, -200);
+                        int paint_face = -1;
+                        for (int j = 0; j < map.model.num_faces; j++) {
+                            Face *cur = &map.model.faces[j];
+                            Vector intersection;
+                            bool intersect = rayIntersectsTriangle(map,
+                                                                   projectiles[i].pos,
+                                                                   Vector(0, 0, -1), cur,
+                                                                   intersection);
+                            if (intersect) {
+                                if (max_intersection.z < intersection.z) {
+                                    max_intersection = intersection;
+                                    paint_face = j;
+                                }
+                            }
+                        }
+
+                        if (paint_face >= 0) {
+                            // paint
+                            PaintPoint pp = {};
+                            pp.team = projectiles[i].team;
+                            pp.pos = max_intersection;
+                            pp.face = paint_face;
+                            // TODO: fix this number only for SNIPER
+                            pp.radius = 15;
+                            draw.paint_points[draw.num_paint_points++] = pp;
+
+                            uint32_t color;
+                            if (projectiles[i].team) {
+                                color = 0xFFFF1FFF;
+                            } else {
+                                color = 0xFF1FFF1F;
+                            }
+
+                            paintCircle(map.model, map.model.faces[pp.face],
+                                        pp.pos, pp.radius, color, false);
+                        }
+                    }
 
                     // check collision with player
                     for (int j = 0; j < MAX_PLAYERS; j++) {
@@ -392,21 +555,58 @@ int main(int argc, char **argv) {
                         Vector dist_vector = player_hitbox_center - projectiles[i].pos;
                         if (dist_vector.len() < player[j].hit_radius +
                                                 projectiles[i].radius) {
+                            player[j].health -= projectiles[i].damage;
+
+                            // respawn
+                            if (player[j].health <= 0) {
+                                killPlayer(player, j);
+                            }
+
+                            // also, paint the ground
+                            {
+                                Vector max_intersection(0, 0, -200);
+                                int paint_face = -1;
+                                for (int j = 0; j < map.model.num_faces; j++) {
+                                    Face *cur = &map.model.faces[j];
+                                    Vector intersection;
+                                    bool intersect = rayIntersectsTriangle(map,
+                                            projectiles[i].pos,
+                                            Vector(0, 0, -1), cur,
+                                            intersection);
+                                    if (intersect) {
+                                        if (max_intersection.z < intersection.z) {
+                                            max_intersection = intersection;
+                                            paint_face = j;
+                                        }
+                                    }
+                                }
+
+                                if (paint_face >= 0) {
+                                    // paint
+                                    PaintPoint pp = {};
+                                    pp.team = projectiles[i].team;
+                                    pp.pos = max_intersection;
+                                    pp.face = paint_face;
+                                    pp.radius = 30; // TODO: fix this number
+                                    draw.paint_points[draw.num_paint_points++] = pp;
+
+                                    uint32_t color;
+                                    if (projectiles[i].team) {
+                                        color = 0xFFFF1FFF;
+                                    } else {
+                                        color = 0xFF1FFF1F;
+                                    }
+
+                                    paintCircle(map.model, map.model.faces[pp.face],
+                                            pp.pos, pp.radius, color, false);
+                                }
+                            }
+
                             for (int k = i; k < num_projectiles - 1; k++) {
                                 projectiles[k] = projectiles[k + 1];
                             }
                             num_projectiles--;
                             i--;
-
-                            player[j].health -= projectiles[i].damage;
-
-                            // respawn
-                            if (player[j].health <= 0) {
-                                player[j].pos = Vector(0, 0, 20);
-                                player[j].health = STARTING_HEALTH;
-                                player[j].dead = true;
-                                player[j].respawn_timer = RESPAWN_DELAY;
-                            }
 
                             goto next;
                         }
@@ -450,9 +650,19 @@ int main(int argc, char **argv) {
 
                             goto next;
                         } else {
-                            projectiles[i].dir += Vector(0, 0, -GRAVITY);
-                            projectiles[i].pos += projectiles[i].dir * projectiles[i].speed;
+                            projectiles[i].velocity += Vector(0, 0, -GRAVITY);
+                            projectiles[i].pos += projectiles[i].velocity;
                         }
+                    }
+
+                    // remove rogue projectiles
+                    if (projectiles[i].pos.z < -5) {
+                        for (int j = i; j < num_projectiles - 1; j++) {
+                            projectiles[j] = projectiles[j + 1];
+                        }
+                        num_projectiles--;
+                        i--;
+                        goto next;
                     }
 
                     draw.projectiles_pos[i] = projectiles[i].pos;
@@ -472,8 +682,10 @@ next:;
                     float scores[3];
                     getPaintResults(map.model, scores);
                     printf("Green: %f\nPink: %f\nNone: %f\n", scores[0], scores[1], scores[2]);
+                    draw.green_score = scores[0];
+                    draw.pink_score = scores[1];
+                    draw.done = true;
                     should_die = true;
-                    break;
                 }
             }
 

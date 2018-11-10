@@ -25,14 +25,24 @@ public:
 
     bool dead;
     float respawn_timer;
+
+    // these variable are bad solutions to real problems
+    // TODO: clean this up
+    Vector normal_sum;
+    Vector paint_max_z;
+    int paint_face;
+
+    // these variable is only for assault
+    bool alternate_fire_assault;
 };
 
 class Projectile {
 public:
     Vector pos;
-    Vector dir;
+    Vector velocity;
     float radius;
-    float speed;
     uint8_t team;
     uint8_t damage;
+
+    int character_id;
 };

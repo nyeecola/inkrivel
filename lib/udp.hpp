@@ -72,6 +72,11 @@ typedef struct {
     uint8_t ammo[MAX_PLAYERS];
 
     bool swimming[MAX_PLAYERS];
+
+    // this should be another packet
+    float green_score;
+    float pink_score;
+    bool done;
 } DrawPacket;
 
 class PacketBuffer {
@@ -241,9 +246,8 @@ sockaddr_in InitializeClientAddr(hostent *server_raw_address) {
 }
 
 
-hostent* DNSLookUp() {
-
-    hostent *server = gethostbyname(SERVER_ADDRESS);
+hostent* DNSLookUp(char *server_address) {
+    hostent *server = gethostbyname(server_address);
     if ( server == NULL ) {
         fprintf(stderr, "ERROR: Failed to resolve server address.%s.\n", strerror(errno));
         exit(1);

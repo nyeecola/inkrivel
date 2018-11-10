@@ -5,4 +5,4 @@ folder:
 	mkdir -p bin
 
 run: compile
-	./bin/game_server 8 0 1 2 3 0 1 2 3
+	./bin/game_server 8 0 0 1 1 2 2 3 3

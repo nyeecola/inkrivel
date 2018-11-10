@@ -60,7 +60,7 @@ uint32_t getLuminance(uint32_t pixel) {
 }
 
 
-Model loadWavefrontModel(const char *obj_filename, const char *texture_filename, FaceType face_type) {
+Model loadWavefrontModel(const char *obj_filename, const char *texture_filename, FaceType face_type, int texture_size) {
     Model model = {};
 
     // NOTE: Objects bigger than the constants are undefined behavior
@@ -81,7 +81,7 @@ Model loadWavefrontModel(const char *obj_filename, const char *texture_filename,
             glBindTexture(GL_TEXTURE_2D, model.texture_id);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexImage2D(GL_TEXTURE_2D, 0, 4, 1024, 1024, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+            glTexImage2D(GL_TEXTURE_2D, 0, 4, texture_size, texture_size, 0, GL_RGBA, GL_UNSIGNED_BYTE,
                          sur->pixels);
             glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -107,7 +107,7 @@ Model loadWavefrontModel(const char *obj_filename, const char *texture_filename,
             glBindTexture(GL_TEXTURE_2D, model.texture_bw_id);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1024, 1024, 0, GL_RGBA,
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texture_size, texture_size, 0, GL_RGBA,
                          GL_UNSIGNED_BYTE, bw_sur->pixels);
             glBindTexture(GL_TEXTURE_2D, 0);
         }
@@ -255,16 +255,20 @@ void drawRect(float x, float y, float w, float h, float r, float g, float b) {
 }
 
 // TODO: stop assuming the next line
-// NOTE: assumes texture size is 1024x1024
+// NOTE: assumes texture size is MAP_TEXTURE_SIZExMAP_TEXTURE_SIZE
 // NOTE: max radius for now is 100
 // NOTE: color must be in 0xFFBBGGRR format
 #define MAX_INK_SPOT_RADIUS 100
 void paintCircle(Model map_model, Face paint_face, Vector center, float radius, uint32_t color, bool opengl) {
     assert(radius <= 100);
 
-    Vector v0 = MAP_SCALE * map_model.vertices[paint_face.vertices[0]];
-    Vector v1 = MAP_SCALE * map_model.vertices[paint_face.vertices[1]];
-    Vector v2 = MAP_SCALE * map_model.vertices[paint_face.vertices[2]];
+    int fv0 = paint_face.vertices[0];
+    int fv1 = paint_face.vertices[1];
+    int fv2 = paint_face.vertices[2];
+
+    Vector v0 = MAP_SCALE * map_model.vertices[fv0];
+    Vector v1 = MAP_SCALE * map_model.vertices[fv1];
+    Vector v2 = MAP_SCALE * map_model.vertices[fv2];
 
     float u, v, w;
     barycentric(center, v0, v1, v2, u, v, w);
@@ -280,26 +284,26 @@ void paintCircle(Model map_model, Face paint_face, Vector center, float radius, 
     int *ink_spot = (int *) malloc(diameter * diameter * sizeof(*ink_spot));
 
     float tex_x, tex_y;
-    tex_x = (u * tex_v0.x + v * tex_v1.x + w * tex_v2.x) * 1023 - int_radius;
-    tex_y = (u * tex_v0.y + v * tex_v1.y + w * tex_v2.y) * 1023 - int_radius;
+    tex_x = (u * tex_v0.x + v * tex_v1.x + w * tex_v2.x) * (MAP_TEXTURE_SIZE-1) - int_radius;
+    tex_y = (u * tex_v0.y + v * tex_v1.y + w * tex_v2.y) * (MAP_TEXTURE_SIZE-1) - int_radius;
 
     for (int k1 = 0; k1 < diameter; k1++) {
         for (int k2 = 0; k2 < diameter; k2++) {
             int y = tex_y + k1;
             int x = tex_x + k2;
 
-            if (x > 1023 || x < 0 || y < 0 || y > 1023) continue;
+            if (x > (MAP_TEXTURE_SIZE-1) || x < 0 || y < 0 || y > (MAP_TEXTURE_SIZE-1)) continue;
 
             int k1_minus_radius = k1 - int_radius;
             int k2_minus_radius = k2 - int_radius;
             if (k1_minus_radius * k1_minus_radius +
                     k2_minus_radius * k2_minus_radius <= radius * radius) {
                 // update texture image
-                pixels[y * 1024 + x] = color;
+                pixels[y * MAP_TEXTURE_SIZE + x] = color;
             }
 
             // set pixel color to match new texture color
-            ink_spot[k1 * diameter + k2] = pixels[y * 1024 + x];
+            ink_spot[k1 * diameter + k2] = pixels[y * MAP_TEXTURE_SIZE + x];
         }
     }
 
@@ -373,6 +377,29 @@ void stbtt_print(float x, float y, char *text, float r=1.0f, float g=1.0f, float
    }
    glColor3f(1, 1, 1);
    glEnd();
+}
+
+void prepareDrawScore() {
+    //glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    //glDisable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    //glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    //glOrtho(0, SCREEN_WIDTH, 0, SCREEN_HEIGHT, -1, 1.0); // origin in bottom left
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+}
+
+void endDrawScore() {
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
 }
 
 void prepareDrawFont() {

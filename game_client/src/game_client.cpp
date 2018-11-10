@@ -19,8 +19,10 @@ int main(int argc, char **argv) {
     int my_id;
     sscanf(argv[1], "%d", &my_id);
 
+    char *server_address_str = argv[2];
+
     int socket_file_descriptor = createUDPSocket();
-    hostent *raw_server_address = DNSLookUp();
+    hostent *raw_server_address = DNSLookUp(server_address_str);
     sockaddr_in server_address = InitializeClientAddr(raw_server_address);
     sockaddr *server_adapted_address = (sockaddr *) &server_address;
 
@@ -55,23 +57,51 @@ int main(int argc, char **argv) {
 
     // Load models
     Models models = {0};
-    models.green_character[ROLO]    = loadWavefrontModel("../assets/rolo/rolo.obj",       "../assets/rolo/rolo_v.png",       VERTEX_ALL);
-    models.green_character[SNIPER]  = loadWavefrontModel("../assets/sniper/sniper.obj",   "../assets/sniper/sniper_v.png",   VERTEX_ALL);
-    models.green_character[ASSAULT] = loadWavefrontModel("../assets/assault/assault.obj", "../assets/assault/assault_v.png", VERTEX_ALL);
-    models.green_character[BUCKET]  = loadWavefrontModel("../assets/bucket/bucket.obj",   "../assets/bucket/bucket_v.png",          VERTEX_ALL);
+    models.green_character[ROLO]    = loadWavefrontModel("../assets/rolo/rolo.obj",       "../assets/rolo/rolo_v.png",       VERTEX_ALL, 1024);
+    models.green_character[SNIPER]  = loadWavefrontModel("../assets/sniper/sniper.obj",   "../assets/sniper/sniper_v.png",   VERTEX_ALL, 1024);
+    models.green_character[ASSAULT] = loadWavefrontModel("../assets/assault/assault.obj", "../assets/assault/assault_v.png", VERTEX_ALL, 1024);
+    models.green_character[BUCKET]  = loadWavefrontModel("../assets/bucket/bucket.obj",   "../assets/bucket/bucket_v.png",   VERTEX_ALL, 1024);
     //models.green_character[TEST]  = loadWavefrontModel("../assets/test/test.obj",       "../assets/test/test_v.png",       VERTEX_ALL);
 
-    models.pink_character[ROLO]    = loadWavefrontModel("../assets/rolo/rolo.obj",       "../assets/rolo/rolo_r.png",       VERTEX_ALL);
-    models.pink_character[SNIPER]  = loadWavefrontModel("../assets/sniper/sniper.obj",   "../assets/sniper/sniper_r.png",   VERTEX_ALL);
-    models.pink_character[ASSAULT] = loadWavefrontModel("../assets/assault/assault.obj", "../assets/assault/assault_r.png", VERTEX_ALL);
-    models.pink_character[BUCKET]  = loadWavefrontModel("../assets/bucket/bucket.obj",   "../assets/bucket/bucket_r.png",          VERTEX_ALL);
-    //models.pink_character[TEST]  = loadWavefrontModel("../assets/test/test.obj",       "../assets/test/test_r.png",       VERTEX_ALL);
+    models.pink_character[ROLO]    = loadWavefrontModel("../assets/rolo/rolo.obj",       "../assets/rolo/rolo_r.png",       VERTEX_ALL, 1024);
+    models.pink_character[SNIPER]  = loadWavefrontModel("../assets/sniper/sniper.obj",   "../assets/sniper/sniper_r.png",   VERTEX_ALL, 1024);
+    models.pink_character[ASSAULT] = loadWavefrontModel("../assets/assault/assault.obj", "../assets/assault/assault_r.png", VERTEX_ALL, 1024);
+    models.pink_character[BUCKET]  = loadWavefrontModel("../assets/bucket/bucket.obj",   "../assets/bucket/bucket_r.png",   VERTEX_ALL, 1024);
+    //models.pink_character[TEST]  = loadWavefrontModel("../assets/test/test.obj",       "../assets/test/test_r.png",       VERTEX_ALL, 1024);
 
-#if 1
-    models.map = loadWavefrontModel("../assets/map/test_map.obj", "../assets/map/test_map.png", VERTEX_ALL);
+#if 0
+    models.map = loadWavefrontModel("../assets/map/test_map.obj", "../assets/map/test_map.png", VERTEX_ALL, MAP_TEXTURE_SIZE);
 #else
-    models.map = loadWavefrontModel("../assets/cherie.obj", "../assets/map2.png", VERTEX_ALL);
+    models.map = loadWavefrontModel("../assets/map/final_map.obj", "../assets/map/final_map.png", VERTEX_ALL, MAP_TEXTURE_SIZE);
 #endif
+
+    // score textures
+    GLuint green_won_id;
+    {
+        SDL_Surface *sur = IMG_Load("../assets/green_win.png");
+        assert(sur);
+
+        glGenTextures(1, &green_won_id);
+        glBindTexture(GL_TEXTURE_2D, green_won_id);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexImage2D(GL_TEXTURE_2D, 0, 4, 1280, 720, 0,
+                     GL_RGBA, GL_UNSIGNED_BYTE, sur->pixels);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+    GLuint pink_won_id;
+    {
+        SDL_Surface *sur = IMG_Load("../assets/pink_win.png");
+        assert(sur);
+
+        glGenTextures(1, &pink_won_id);
+        glBindTexture(GL_TEXTURE_2D, pink_won_id);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexImage2D(GL_TEXTURE_2D, 0, 4, 1280, 720, 0,
+                     GL_RGBA, GL_UNSIGNED_BYTE, sur->pixels);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
 
     // TODO: MUST BE INITIALIZED PROPERLY
     InputPacket input = {0};
@@ -221,8 +251,9 @@ int main(int argc, char **argv) {
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
 
+
         // set camera position
-        glTranslatef(-draw.pos[my_id].x, -draw.pos[my_id].y, -8);
+        glTranslatef(-draw.pos[my_id].x, -draw.pos[my_id].y, -9);
 
         // draw sun
         {
@@ -316,25 +347,36 @@ int main(int argc, char **argv) {
                 switch (draw.model_id[i]) {
                     case TEST:
                         glScalef(TEST_SCALE);
+                        if (draw.swimming[i]) {
+                            glTranslatef(0, 0, -0.4);
+                        }
                         break;
                     case ROLO:
                         glScalef(ROLO_SCALE);
+                        if (draw.swimming[i]) {
+                            glTranslatef(0, 0, -1);
+                        }
                         break;
                     case SNIPER:
                         glScalef(SNIPER_SCALE);
+                        if (draw.swimming[i]) {
+                            glTranslatef(0, 0, -0.72);
+                        }
                         break;
                     case ASSAULT:
                         glScalef(ASSAULT_SCALE);
+                        if (draw.swimming[i]) {
+                            glTranslatef(0, 0, -0.44);
+                        }
                         break;
                     case BUCKET:
                         glScalef(BUCKET_SCALE);
+                        if (draw.swimming[i]) {
+                            glTranslatef(0, 0, -1);
+                        }
                         break;
                     default:
                         assert(false);
-                }
-
-                if (input.swimming) {
-                    glTranslatef(0, 0, -0.4);
                 }
 
                 if (i % 2) {
@@ -356,7 +398,7 @@ int main(int argc, char **argv) {
         }
 
         // draw ammo bar
-        if (input.swimming) {
+        if (input.swimming && draw.respawn_timer[my_id] == -1) {
             assert(draw.ammo[my_id] >= 0);
 
             float x = draw.pos[my_id].x;
@@ -383,6 +425,39 @@ int main(int argc, char **argv) {
                      (AMMO_BOX_HEIGHT - AMMO_BOX_BORDER * 2) * ratio, r, g, b);
         }
 
+        // score screen
+        if (draw.done) {
+            prepareDrawScore();
+
+            if (draw.pink_score > draw.green_score) {
+                glBindTexture(GL_TEXTURE_2D, pink_won_id);
+            } else {
+                glBindTexture(GL_TEXTURE_2D, green_won_id);
+            }
+            glBegin(GL_QUADS);
+            glColor3f(1, 1, 1);
+            glTexCoord2f(0, 0);
+            glVertex3f(-1, 1, 0);
+            glTexCoord2f(0, 1);
+            glVertex3f(-1, -1, 0);
+            glTexCoord2f(1, 1);
+            glVertex3f(1, -1, 0);
+            glTexCoord2f(1, 0);
+            glVertex3f(1, 1, 0);
+            glEnd();
+
+            endDrawScore();
+
+            prepareDrawFont();
+
+            char buffer[10] = {0};
+            sprintf(buffer, "%02.2f%%", draw.green_score);
+            stbtt_print(810, 350, buffer);
+            sprintf(buffer, "%02.2f%%", draw.pink_score);
+            stbtt_print(810, 490, buffer);
+
+            endDrawFont();
+        }
 
         // font
         {
@@ -404,3 +479,4 @@ int main(int argc, char **argv) {
 
     return 0;
 }
+
