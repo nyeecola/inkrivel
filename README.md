@@ -1,4 +1,4 @@
-# Bibliotecas necessárias
+# External libraries needed
 
 - SDL2 (https://www.libsdl.org/)
 - SDL2_mixer
@@ -6,17 +6,13 @@
 - stb_truetype (https://github.com/nothings/stb/blob/master/stb_truetype.h
 - glfw
 
-# Para compilar
-Entre no diretório `src`:
-```
-make
-./build/bin/runner
-```
+# How to run
+- From the root of the project:
+`make game_server_run` (Runs the game server)
+`make server_run` (Runs the account and chat server)
+`make client_run` (Runs the lobby which can be used to find a game and start playing) 
 
-# Para rodar os testes
-Entre no diretório `src`:
-```
-make
-make test
-./build/test
-```
+# Screenshots
+![](assets/login.jpg)
+![](assets/game.jpg)
+![](assets/endgame.jpg)
