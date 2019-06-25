@@ -13,6 +13,6 @@
 `make client_run` (Runs the lobby which can be used to find a game and start playing) 
 
 # Screenshots
-![](assets/login.jpg)
+![](assets/login.png)
 ![](assets/game.jpg)
 ![](assets/endgame.jpg)
